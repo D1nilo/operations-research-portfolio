@@ -50,9 +50,7 @@ def create_selected_cargo_revenue_chart(
     output_path: str | Path,
 ) -> Path:
     if result.selected_cargo.empty:
-        raise ValueError(
-            "No existen cargas seleccionadas para generar el gráfico."
-        )
+        raise ValueError("No existen cargas seleccionadas para generar el gráfico.")
 
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)

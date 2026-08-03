@@ -24,14 +24,10 @@ def build_solution_summary(
     max_volume = float(aircraft_config["max_volume_m3"])
 
     if max_weight <= 0:
-        raise ValueError(
-            "La capacidad máxima de peso debe ser mayor que cero."
-        )
+        raise ValueError("La capacidad máxima de peso debe ser mayor que cero.")
 
     if max_volume <= 0:
-        raise ValueError(
-            "La capacidad máxima de volumen debe ser mayor que cero."
-        )
+        raise ValueError("La capacidad máxima de volumen debe ser mayor que cero.")
 
     return CargoSolutionSummary(
         status=result.status,
@@ -40,10 +36,6 @@ def build_solution_summary(
         total_revenue_usd=result.total_revenue_usd,
         total_weight_kg=result.total_weight_kg,
         total_volume_m3=result.total_volume_m3,
-        weight_utilization_pct=(
-            result.total_weight_kg / max_weight
-        ) * 100,
-        volume_utilization_pct=(
-            result.total_volume_m3 / max_volume
-        ) * 100,
+        weight_utilization_pct=(result.total_weight_kg / max_weight) * 100,
+        volume_utilization_pct=(result.total_volume_m3 / max_volume) * 100,
     )
