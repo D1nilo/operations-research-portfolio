@@ -1,43 +1,59 @@
-from typing import Any
+from dataclasses import dataclass
 
 import pandas as pd
 from ortools.linear_solver import pywraplp
 
+from airline_cargo_optimization.model import CargoOptimizationModel
+
+
+@dataclass(frozen=True)
+class CargoOptimizationResult:
+    status: str
+    objective_value: float
+    selected_cargo: pd.DataFrame
+    total_weight_kg: float
+    total_volume_m3: float
+    total_revenue_usd: float
+
 
 def solve_cargo_model(
-    solver: pywraplp.Solver,
-    selection_variables: dict[str, pywraplp.Variable],
+    model: CargoOptimizationModel,
     cargo_data: pd.DataFrame,
-) -> dict[str, Any]:
-    status = solver.Solve()
+) -> CargoOptimizationResult:
+    status_code = model.solver.Solve()
 
-    valid_statuses = {
-        pywraplp.Solver.OPTIMAL,
-        pywraplp.Solver.FEASIBLE,
+    status_mapping = {
+        pywraplp.Solver.OPTIMAL: "OPTIMAL",
+        pywraplp.Solver.FEASIBLE: "FEASIBLE",
+        pywraplp.Solver.INFEASIBLE: "INFEASIBLE",
+        pywraplp.Solver.UNBOUNDED: "UNBOUNDED",
+        pywraplp.Solver.ABNORMAL: "ABNORMAL",
+        pywraplp.Solver.NOT_SOLVED: "NOT_SOLVED",
     }
 
-    if status not in valid_statuses:
+    status = status_mapping.get(status_code, "UNKNOWN")
+
+    if status_code not in {
+        pywraplp.Solver.OPTIMAL,
+        pywraplp.Solver.FEASIBLE,
+    }:
         raise RuntimeError(
-            f"El modelo no encontró una solución factible. Estado: {status}"
+            f"El modelo no encontró una solución válida. Estado: {status}"
         )
 
     selected_ids = {
         cargo_id
-        for cargo_id, variable in selection_variables.items()
+        for cargo_id, variable in model.selection_variables.items()
         if variable.solution_value() > 0.5
     }
 
-    selected_cargo = cargo_data[
-        cargo_data["cargo_id"].isin(selected_ids)
-    ].copy()
+    selected_cargo = cargo_data[cargo_data["cargo_id"].isin(selected_ids)].copy()
 
-    return {
-        "status": "OPTIMAL"
-        if status == pywraplp.Solver.OPTIMAL
-        else "FEASIBLE",
-        "objective_value": solver.Objective().Value(),
-        "selected_cargo": selected_cargo,
-        "total_weight_kg": selected_cargo["weight_kg"].sum(),
-        "total_volume_m3": selected_cargo["volume_m3"].sum(),
-        "total_revenue_usd": selected_cargo["revenue_usd"].sum(),
-    }
+    return CargoOptimizationResult(
+        status=status,
+        objective_value=model.solver.Objective().Value(),
+        selected_cargo=selected_cargo,
+        total_weight_kg=float(selected_cargo["weight_kg"].sum()),
+        total_volume_m3=float(selected_cargo["volume_m3"].sum()),
+        total_revenue_usd=float(selected_cargo["revenue_usd"].sum()),
+    )

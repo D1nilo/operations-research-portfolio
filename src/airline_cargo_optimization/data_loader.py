@@ -23,8 +23,6 @@ def load_cargo_data(file_path: str | Path) -> pd.DataFrame:
 
     missing_columns = REQUIRED_COLUMNS.difference(data.columns)
     if missing_columns:
-        raise ValueError(
-            f"Faltan columnas obligatorias: {sorted(missing_columns)}"
-        )
+        raise ValueError(f"Faltan columnas obligatorias: {sorted(missing_columns)}")
 
     return data

@@ -27,18 +27,12 @@ def validate_cargo_data(cargo_data: pd.DataFrame) -> None:
     missing_columns = REQUIRED_COLUMNS.difference(cargo_data.columns)
 
     if missing_columns:
-        raise ValueError(
-            f"Faltan columnas obligatorias: {sorted(missing_columns)}"
-        )
+        raise ValueError(f"Faltan columnas obligatorias: {sorted(missing_columns)}")
 
     if cargo_data[list(REQUIRED_COLUMNS)].isnull().any().any():
-        null_columns = cargo_data.columns[
-            cargo_data.isnull().any()
-        ].tolist()
+        null_columns = cargo_data.columns[cargo_data.isnull().any()].tolist()
 
-        raise ValueError(
-            f"Existen valores nulos en las columnas: {null_columns}"
-        )
+        raise ValueError(f"Existen valores nulos en las columnas: {null_columns}")
 
     if cargo_data["cargo_id"].duplicated().any():
         duplicated_ids = cargo_data.loc[
@@ -53,24 +47,16 @@ def validate_cargo_data(cargo_data: pd.DataFrame) -> None:
 
     for column in NUMERIC_COLUMNS:
         if not pd.api.types.is_numeric_dtype(cargo_data[column]):
-            raise TypeError(
-                f"La columna '{column}' debe contener valores numéricos."
-            )
+            raise TypeError(f"La columna '{column}' debe contener valores numéricos.")
 
     if (cargo_data["weight_kg"] <= 0).any():
-        raise ValueError(
-            "El peso de todas las cargas debe ser mayor que cero."
-        )
+        raise ValueError("El peso de todas las cargas debe ser mayor que cero.")
 
     if (cargo_data["volume_m3"] <= 0).any():
-        raise ValueError(
-            "El volumen de todas las cargas debe ser mayor que cero."
-        )
+        raise ValueError("El volumen de todas las cargas debe ser mayor que cero.")
 
     if (cargo_data["revenue_usd"] < 0).any():
-        raise ValueError(
-            "El ingreso esperado no puede contener valores negativos."
-        )
+        raise ValueError("El ingreso esperado no puede contener valores negativos.")
 
     invalid_priorities = set(
         cargo_data.loc[
@@ -81,18 +67,10 @@ def validate_cargo_data(cargo_data: pd.DataFrame) -> None:
 
     if invalid_priorities:
         raise ValueError(
-            "Existen prioridades no permitidas: "
-            f"{sorted(invalid_priorities)}"
+            f"Existen prioridades no permitidas: {sorted(invalid_priorities)}"
         )
 
-    empty_descriptions = (
-        cargo_data["description"]
-        .astype(str)
-        .str.strip()
-        .eq("")
-    )
+    empty_descriptions = cargo_data["description"].astype(str).str.strip().eq("")
 
     if empty_descriptions.any():
-        raise ValueError(
-            "Todas las cargas deben incluir una descripción."
-        )
+        raise ValueError("Todas las cargas deben incluir una descripción.")
