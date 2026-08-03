@@ -1,9 +1,17 @@
 from airline_cargo_optimization.config import load_aircraft_config
 from airline_cargo_optimization.data_loader import load_cargo_data
 from airline_cargo_optimization.data_validation import validate_cargo_data
+from airline_cargo_optimization.exporter import (
+    export_selected_cargo_csv,
+    export_solution_summary_json,
+)
 from airline_cargo_optimization.model import build_cargo_model
 from airline_cargo_optimization.results import build_solution_summary
 from airline_cargo_optimization.solver import solve_cargo_model
+from airline_cargo_optimization.visualization import (
+    create_capacity_utilization_chart,
+    create_selected_cargo_revenue_chart,
+)
 
 
 def main() -> None:
@@ -30,6 +38,26 @@ def main() -> None:
     summary = build_solution_summary(
         result,
         aircraft_config,
+    )
+
+    capacity_chart = create_capacity_utilization_chart(
+        summary,
+        "reports/figures/capacity_utilization.png",
+    )
+
+    revenue_chart = create_selected_cargo_revenue_chart(
+        result,
+        "reports/figures/selected_cargo_revenue.png",
+    )
+
+    selected_cargo_file = export_selected_cargo_csv(
+        result,
+        "reports/results/selected_cargo.csv",
+    )
+
+    summary_file = export_solution_summary_json(
+        summary,
+        "reports/results/solution_summary.json",
     )
 
     print("\nEstado de la solución:")
@@ -61,6 +89,14 @@ def main() -> None:
         f"Utilización de volumen: "
         f"{summary.volume_utilization_pct:.2f}%"
     )
+
+    print("\nGráficos generados:")
+    print(capacity_chart)
+    print(revenue_chart)
+
+    print("\nArchivos de resultados generados:")
+    print(selected_cargo_file)
+    print(summary_file)
 
 
 if __name__ == "__main__":
