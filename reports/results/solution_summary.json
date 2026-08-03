@@ -1,0 +1,10 @@
+{
+  "status": "OPTIMAL",
+  "aircraft_id": "B767F-001",
+  "selected_items": 6,
+  "total_revenue_usd": 39100.0,
+  "total_weight_kg": 4650.0,
+  "total_volume_m3": 24.0,
+  "weight_utilization_pct": 93.0,
+  "volume_utilization_pct": 100.0
+}
