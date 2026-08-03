@@ -1,0 +1,6 @@
+{
+  "aircraft_id": "B767F-001",
+  "max_weight_kg": 5000,
+  "max_volume_m3": 24.0,
+  "minimum_priority_3_items": 2
+}
