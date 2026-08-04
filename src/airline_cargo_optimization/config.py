@@ -16,6 +16,7 @@ REQUIRED_COMPARTMENT_KEYS = {
     "description",
     "max_weight_kg",
     "max_volume_m3",
+    "allows_hazardous",
 }
 
 
@@ -76,10 +77,8 @@ def validate_aircraft_config(
             "La cantidad mínima de cargas prioritarias no puede ser negativa."
         )
 
-    compartments = config["compartments"]
-
     validate_compartments(
-        compartments,
+        config["compartments"],
         max_weight_kg,
         max_volume_m3,
     )
@@ -99,6 +98,7 @@ def validate_compartments(
     compartment_ids: list[str] = []
     total_compartment_weight = 0.0
     total_compartment_volume = 0.0
+    hazardous_enabled_compartments = 0
 
     for position, compartment in enumerate(
         compartments,
@@ -146,6 +146,16 @@ def validate_compartments(
             f"{normalized_id}.max_volume_m3",
         )
 
+        allows_hazardous = compartment["allows_hazardous"]
+
+        if not isinstance(allows_hazardous, bool):
+            raise TypeError(
+                f"El parámetro '{normalized_id}.allows_hazardous' debe ser booleano."
+            )
+
+        if allows_hazardous:
+            hazardous_enabled_compartments += 1
+
         total_compartment_weight += compartment_weight
         total_compartment_volume += compartment_volume
 
@@ -159,6 +169,12 @@ def validate_compartments(
         raise ValueError(
             "Existen identificadores de compartimiento duplicados: "
             f"{sorted(duplicated_ids)}"
+        )
+
+    if hazardous_enabled_compartments == 0:
+        raise ValueError(
+            "Debe existir al menos un compartimiento autorizado "
+            "para mercancías peligrosas."
         )
 
     if not math.isclose(

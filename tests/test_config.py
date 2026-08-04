@@ -21,21 +21,34 @@ def create_valid_config() -> dict[str, object]:
                 "description": "Compartimiento delantero",
                 "max_weight_kg": 1600,
                 "max_volume_m3": 8.0,
+                "allows_hazardous": False,
             },
             {
                 "compartment_id": "MAIN",
                 "description": "Compartimiento principal",
                 "max_weight_kg": 2200,
                 "max_volume_m3": 10.0,
+                "allows_hazardous": True,
             },
             {
                 "compartment_id": "AFT",
                 "description": "Compartimiento trasero",
                 "max_weight_kg": 1200,
                 "max_volume_m3": 6.0,
+                "allows_hazardous": False,
             },
         ],
     }
+
+
+def get_compartments(
+    config: dict[str, object],
+) -> list[dict[str, object]]:
+    compartments = config["compartments"]
+
+    assert isinstance(compartments, list)
+
+    return compartments
 
 
 def test_validate_aircraft_config_accepts_valid_config() -> None:
@@ -110,10 +123,7 @@ def test_validate_aircraft_config_rejects_non_list_compartments() -> None:
 
 def test_validate_aircraft_config_rejects_duplicate_compartment_ids() -> None:
     config = create_valid_config()
-
-    compartments = config["compartments"]
-
-    assert isinstance(compartments, list)
+    compartments = get_compartments(config)
 
     compartments[1]["compartment_id"] = "FORWARD"
 
@@ -126,10 +136,7 @@ def test_validate_aircraft_config_rejects_duplicate_compartment_ids() -> None:
 
 def test_validate_aircraft_config_rejects_empty_compartment_id() -> None:
     config = create_valid_config()
-
-    compartments = config["compartments"]
-
-    assert isinstance(compartments, list)
+    compartments = get_compartments(config)
 
     compartments[0]["compartment_id"] = "   "
 
@@ -142,10 +149,7 @@ def test_validate_aircraft_config_rejects_empty_compartment_id() -> None:
 
 def test_validate_aircraft_config_rejects_empty_compartment_description() -> None:
     config = create_valid_config()
-
-    compartments = config["compartments"]
-
-    assert isinstance(compartments, list)
+    compartments = get_compartments(config)
 
     compartments[0]["description"] = ""
 
@@ -158,10 +162,7 @@ def test_validate_aircraft_config_rejects_empty_compartment_description() -> Non
 
 def test_validate_aircraft_config_rejects_invalid_compartment_weight() -> None:
     config = create_valid_config()
-
-    compartments = config["compartments"]
-
-    assert isinstance(compartments, list)
+    compartments = get_compartments(config)
 
     compartments[0]["max_weight_kg"] = 0
 
@@ -174,10 +175,7 @@ def test_validate_aircraft_config_rejects_invalid_compartment_weight() -> None:
 
 def test_validate_aircraft_config_rejects_invalid_compartment_volume() -> None:
     config = create_valid_config()
-
-    compartments = config["compartments"]
-
-    assert isinstance(compartments, list)
+    compartments = get_compartments(config)
 
     compartments[0]["max_volume_m3"] = -1
 
@@ -188,12 +186,49 @@ def test_validate_aircraft_config_rejects_invalid_compartment_volume() -> None:
         validate_aircraft_config(config)
 
 
+def test_validate_aircraft_config_rejects_missing_allows_hazardous() -> None:
+    config = create_valid_config()
+    compartments = get_compartments(config)
+
+    del compartments[0]["allows_hazardous"]
+
+    with pytest.raises(
+        ValueError,
+        match="allows_hazardous",
+    ):
+        validate_aircraft_config(config)
+
+
+def test_validate_aircraft_config_rejects_non_boolean_allows_hazardous() -> None:
+    config = create_valid_config()
+    compartments = get_compartments(config)
+
+    compartments[0]["allows_hazardous"] = "false"
+
+    with pytest.raises(
+        TypeError,
+        match="allows_hazardous",
+    ):
+        validate_aircraft_config(config)
+
+
+def test_validate_aircraft_config_rejects_no_hazardous_compartment() -> None:
+    config = create_valid_config()
+    compartments = get_compartments(config)
+
+    for compartment in compartments:
+        compartment["allows_hazardous"] = False
+
+    with pytest.raises(
+        ValueError,
+        match="al menos un compartimiento autorizado",
+    ):
+        validate_aircraft_config(config)
+
+
 def test_validate_aircraft_config_rejects_weight_total_mismatch() -> None:
     config = create_valid_config()
-
-    compartments = config["compartments"]
-
-    assert isinstance(compartments, list)
+    compartments = get_compartments(config)
 
     compartments[0]["max_weight_kg"] = 1500
 
@@ -206,10 +241,7 @@ def test_validate_aircraft_config_rejects_weight_total_mismatch() -> None:
 
 def test_validate_aircraft_config_rejects_volume_total_mismatch() -> None:
     config = create_valid_config()
-
-    compartments = config["compartments"]
-
-    assert isinstance(compartments, list)
+    compartments = get_compartments(config)
 
     compartments[0]["max_volume_m3"] = 7.0
 
@@ -236,3 +268,11 @@ def test_load_aircraft_config_reads_json(
     assert config["max_weight_kg"] == 5000
     assert config["max_volume_m3"] == 24.0
     assert len(config["compartments"]) == 3
+
+    hazardous_compartments = [
+        compartment["compartment_id"]
+        for compartment in config["compartments"]
+        if compartment["allows_hazardous"]
+    ]
+
+    assert hazardous_compartments == ["MAIN"]

@@ -1,11 +1,13 @@
-cargo_id,description,weight_kg,volume_m3,revenue_usd,priority
-C001,Medicamentos,450,2.5,5200,3
-C002,Electronica,800,4.0,6800,2
-C003,Repuestos industriales,1200,6.5,7500,2
-C004,Alimentos perecibles,600,3.2,4900,3
-C005,Textiles,900,5.5,3500,1
-C006,Documentos urgentes,100,0.5,1800,3
-C007,Maquinaria ligera,1500,7.0,8200,1
-C008,Productos farmaceuticos,500,2.8,5900,3
-C009,Equipamiento medico,1100,5.0,8800,3
-C010,Productos retail,700,4.2,4200,1
+cargo_id,description,weight_kg,volume_m3,revenue_usd,priority,is_hazardous,hazard_class
+C001,Medicamentos,450,2.5,5200,3,False,
+C002,Electronica,800,4.0,6800,2,False,
+C003,Repuestos industriales,1200,6.5,7500,2,False,
+C004,Alimentos perecibles,600,3.2,4900,3,False,
+C005,Textiles,900,5.5,3500,1,False,
+C006,Documentos urgentes,100,0.5,1800,3,False,
+C007,Maquinaria ligera,1500,7.0,8200,1,False,
+C008,Productos farmaceuticos,500,2.8,5900,3,False,
+C009,Equipamiento medico,1100,5.0,8800,3,False,
+C010,Productos retail,700,4.2,4200,1,False,
+C011,Baterias de litio,350,1.8,6500,3,True,CLASS_9
+C012,Productos inflamables,400,2.0,6100,2,True,CLASS_3

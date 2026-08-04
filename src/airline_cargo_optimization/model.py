@@ -106,6 +106,29 @@ def build_cargo_model(
             f"max_volume_{compartment_id}",
         )
 
+    hazardous_cargo = cargo_data[cargo_data["is_hazardous"]]
+
+    unauthorized_compartments = [
+        compartment
+        for compartment in compartments
+        if not compartment["allows_hazardous"]
+    ]
+
+    for row in hazardous_cargo.itertuples(index=False):
+        for compartment in unauthorized_compartments:
+            compartment_id = compartment["compartment_id"]
+
+            solver.Add(
+                assignment_variables[
+                    (
+                        row.cargo_id,
+                        compartment_id,
+                    )
+                ]
+                == 0,
+                f"hazardous_restriction_{row.cargo_id}_{compartment_id}",
+            )
+
     high_priority_cargo = cargo_data[cargo_data["priority"] == 3]
 
     solver.Add(
