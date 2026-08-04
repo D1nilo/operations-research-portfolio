@@ -77,7 +77,7 @@ def test_build_cargo_model_creates_expected_constraints() -> None:
         create_aircraft_config(),
     )
 
-    assert model.solver.NumConstraints() == 8
+    assert model.solver.NumConstraints() == 10
 
 
 def test_build_cargo_model_uses_binary_variables() -> None:
@@ -152,3 +152,35 @@ def test_compartment_weight_capacities_are_respected() -> None:
         )
 
         assert assigned_weight <= max_weight
+
+
+def test_compartment_volume_capacities_are_respected() -> None:
+    cargo_data = create_cargo_data()
+    config = create_aircraft_config()
+
+    model = build_cargo_model(
+        cargo_data,
+        config,
+    )
+
+    status = model.solver.Solve()
+
+    assert status == pywraplp.Solver.OPTIMAL
+
+    cargo_volumes = cargo_data.set_index("cargo_id")["volume_m3"].to_dict()
+
+    compartments = config["compartments"]
+
+    assert isinstance(compartments, list)
+
+    for compartment in compartments:
+        compartment_id = compartment["compartment_id"]
+        max_volume = compartment["max_volume_m3"]
+
+        assigned_volume = sum(
+            cargo_volumes[cargo_id]
+            * model.assignment_variables[(cargo_id, compartment_id)].solution_value()
+            for cargo_id in cargo_volumes
+        )
+
+        assert assigned_volume <= max_volume

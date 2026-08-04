@@ -84,6 +84,50 @@ def test_solver_maximizes_revenue() -> None:
     }
 
 
+def test_solver_exposes_compartment_assignment() -> None:
+    cargo_data = create_cargo_data()
+    config = create_aircraft_config()
+
+    model = build_cargo_model(
+        cargo_data,
+        config,
+    )
+
+    result = solve_cargo_model(
+        model,
+        cargo_data,
+    )
+
+    assert "compartment_id" in result.selected_cargo.columns
+    assert result.selected_cargo["compartment_id"].notna().all()
+
+    valid_compartments = {
+        compartment["compartment_id"] for compartment in config["compartments"]
+    }
+
+    assert set(result.selected_cargo["compartment_id"]).issubset(valid_compartments)
+
+
+def test_each_selected_cargo_has_one_compartment() -> None:
+    cargo_data = create_cargo_data()
+
+    model = build_cargo_model(
+        cargo_data,
+        create_aircraft_config(),
+    )
+
+    result = solve_cargo_model(
+        model,
+        cargo_data,
+    )
+
+    assignment_counts = result.selected_cargo.groupby("cargo_id")[
+        "compartment_id"
+    ].count()
+
+    assert assignment_counts.eq(1).all()
+
+
 def test_solver_rejects_infeasible_model() -> None:
     cargo_data = create_cargo_data()
 
@@ -123,7 +167,7 @@ def test_solver_returns_technical_metrics() -> None:
     assert result.iterations >= 0
     assert result.nodes >= 0
     assert result.variable_count == 9
-    assert result.constraint_count == 8
+    assert result.constraint_count == 10
 
 
 def test_solver_objective_matches_total_revenue() -> None:

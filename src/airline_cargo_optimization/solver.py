@@ -52,7 +52,32 @@ def solve_cargo_model(
         if variable.solution_value() > 0.5
     }
 
+    compartment_assignments = {
+        cargo_id: compartment_id
+        for (
+            cargo_id,
+            compartment_id,
+        ), variable in model.assignment_variables.items()
+        if variable.solution_value() > 0.5
+    }
+
+    missing_assignments = selected_ids.difference(compartment_assignments)
+
+    if missing_assignments:
+        raise RuntimeError(
+            "Existen cargas seleccionadas sin compartimiento asignado: "
+            f"{sorted(missing_assignments)}"
+        )
+
     selected_cargo = cargo_data[cargo_data["cargo_id"].isin(selected_ids)].copy()
+
+    selected_cargo["compartment_id"] = selected_cargo["cargo_id"].map(
+        compartment_assignments
+    )
+
+    selected_cargo = selected_cargo.sort_values(
+        by=["compartment_id", "cargo_id"],
+    ).reset_index(drop=True)
 
     return CargoOptimizationResult(
         status=status,

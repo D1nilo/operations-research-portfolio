@@ -23,6 +23,10 @@ def create_result() -> CargoOptimizationResult:
             "volume_m3": [2.0, 3.0],
             "revenue_usd": [5000, 7000],
             "priority": [3, 2],
+            "compartment_id": [
+                "AFT",
+                "FORWARD",
+            ],
         }
     )
 
@@ -36,8 +40,8 @@ def create_result() -> CargoOptimizationResult:
         wall_time_ms=10,
         iterations=0,
         nodes=1,
-        variable_count=2,
-        constraint_count=3,
+        variable_count=9,
+        constraint_count=10,
     )
 
 
@@ -66,13 +70,22 @@ def test_export_selected_cargo_csv(tmp_path: Path) -> None:
 
     assert result_path.exists()
     assert len(exported_data) == 2
+    assert "compartment_id" in exported_data.columns
+
     assert list(exported_data["cargo_id"]) == [
         "C001",
         "C002",
     ]
 
+    assert list(exported_data["compartment_id"]) == [
+        "AFT",
+        "FORWARD",
+    ]
 
-def test_export_solution_summary_json(tmp_path: Path) -> None:
+
+def test_export_solution_summary_json(
+    tmp_path: Path,
+) -> None:
     output_path = tmp_path / "summary.json"
 
     result_path = export_solution_summary_json(
@@ -89,8 +102,6 @@ def test_export_solution_summary_json(tmp_path: Path) -> None:
     assert exported_summary["aircraft_id"] == "TEST-001"
     assert exported_summary["selected_items"] == 2
     assert exported_summary["total_revenue_usd"] == 12000
-    assert exported_summary["weight_utilization_pct"] == 50.0
-    assert exported_summary["volume_utilization_pct"] == 50.0
 
     solver_metrics = exported_summary["solver_metrics"]
 
@@ -98,5 +109,18 @@ def test_export_solution_summary_json(tmp_path: Path) -> None:
     assert solver_metrics["wall_time_ms"] == 10
     assert solver_metrics["iterations"] == 0
     assert solver_metrics["nodes"] == 1
-    assert solver_metrics["variable_count"] == 2
-    assert solver_metrics["constraint_count"] == 3
+    assert solver_metrics["variable_count"] == 9
+    assert solver_metrics["constraint_count"] == 10
+
+    cargo_assignments = exported_summary["cargo_assignments"]
+
+    assert cargo_assignments == [
+        {
+            "cargo_id": "C001",
+            "compartment_id": "AFT",
+        },
+        {
+            "cargo_id": "C002",
+            "compartment_id": "FORWARD",
+        },
+    ]

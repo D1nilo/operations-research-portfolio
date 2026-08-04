@@ -1,18 +1,48 @@
 {
   "status": "OPTIMAL",
   "aircraft_id": "B767F-001",
-  "selected_items": 6,
-  "total_revenue_usd": 39100.0,
-  "total_weight_kg": 4650.0,
-  "total_volume_m3": 24.0,
-  "weight_utilization_pct": 93.0,
-  "volume_utilization_pct": 100.0,
+  "selected_items": 7,
+  "total_revenue_usd": 37600.0,
+  "total_weight_kg": 4250.0,
+  "total_volume_m3": 22.2,
+  "weight_utilization_pct": 85.0,
+  "volume_utilization_pct": 92.5,
   "solver_metrics": {
-    "objective_value": 39100.0,
-    "wall_time_ms": 54,
-    "iterations": 13,
+    "objective_value": 37600.0,
+    "wall_time_ms": 29,
+    "iterations": 18,
     "nodes": 1,
     "variable_count": 40,
-    "constraint_count": 16
-  }
+    "constraint_count": 19
+  },
+  "cargo_assignments": [
+    {
+      "cargo_id": "C006",
+      "compartment_id": "AFT"
+    },
+    {
+      "cargo_id": "C010",
+      "compartment_id": "AFT"
+    },
+    {
+      "cargo_id": "C008",
+      "compartment_id": "FORWARD"
+    },
+    {
+      "cargo_id": "C009",
+      "compartment_id": "FORWARD"
+    },
+    {
+      "cargo_id": "C001",
+      "compartment_id": "MAIN"
+    },
+    {
+      "cargo_id": "C002",
+      "compartment_id": "MAIN"
+    },
+    {
+      "cargo_id": "C004",
+      "compartment_id": "MAIN"
+    }
+  ]
 }

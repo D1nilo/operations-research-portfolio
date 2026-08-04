@@ -31,6 +31,10 @@ def export_solution_summary_json(
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
+    cargo_assignments = result.selected_cargo[["cargo_id", "compartment_id"]].to_dict(
+        orient="records"
+    )
+
     payload: dict[str, Any] = {
         **asdict(summary),
         "solver_metrics": {
@@ -41,6 +45,7 @@ def export_solution_summary_json(
             "variable_count": result.variable_count,
             "constraint_count": result.constraint_count,
         },
+        "cargo_assignments": cargo_assignments,
     }
 
     with path.open("w", encoding="utf-8") as file:

@@ -1,7 +1,8 @@
-cargo_id,description,weight_kg,volume_m3,revenue_usd,priority
-C001,Medicamentos,450,2.5,5200,3
-C002,Electronica,800,4.0,6800,2
-C003,Repuestos industriales,1200,6.5,7500,2
-C004,Alimentos perecibles,600,3.2,4900,3
-C008,Productos farmaceuticos,500,2.8,5900,3
-C009,Equipamiento medico,1100,5.0,8800,3
+cargo_id,description,weight_kg,volume_m3,revenue_usd,priority,compartment_id
+C006,Documentos urgentes,100,0.5,1800,3,AFT
+C010,Productos retail,700,4.2,4200,1,AFT
+C008,Productos farmaceuticos,500,2.8,5900,3,FORWARD
+C009,Equipamiento medico,1100,5.0,8800,3,FORWARD
+C001,Medicamentos,450,2.5,5200,3,MAIN
+C002,Electronica,800,4.0,6800,2,MAIN
+C004,Alimentos perecibles,600,3.2,4900,3,MAIN

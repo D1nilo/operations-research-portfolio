@@ -91,6 +91,21 @@ def build_cargo_model(
             f"max_weight_{compartment_id}",
         )
 
+        solver.Add(
+            sum(
+                row.volume_m3
+                * assignment_variables[
+                    (
+                        row.cargo_id,
+                        compartment_id,
+                    )
+                ]
+                for row in cargo_data.itertuples(index=False)
+            )
+            <= compartment["max_volume_m3"],
+            f"max_volume_{compartment_id}",
+        )
+
     high_priority_cargo = cargo_data[cargo_data["priority"] == 3]
 
     solver.Add(
