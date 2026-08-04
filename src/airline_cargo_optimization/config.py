@@ -17,6 +17,7 @@ REQUIRED_COMPARTMENT_KEYS = {
     "max_weight_kg",
     "max_volume_m3",
     "allows_hazardous",
+    "supports_cold_chain",
 }
 
 
@@ -99,6 +100,7 @@ def validate_compartments(
     total_compartment_weight = 0.0
     total_compartment_volume = 0.0
     hazardous_enabled_compartments = 0
+    cold_chain_enabled_compartments = 0
 
     for position, compartment in enumerate(
         compartments,
@@ -153,8 +155,18 @@ def validate_compartments(
                 f"El parámetro '{normalized_id}.allows_hazardous' debe ser booleano."
             )
 
+        supports_cold_chain = compartment["supports_cold_chain"]
+
+        if not isinstance(supports_cold_chain, bool):
+            raise TypeError(
+                f"El parámetro '{normalized_id}.supports_cold_chain' debe ser booleano."
+            )
+
         if allows_hazardous:
             hazardous_enabled_compartments += 1
+
+        if supports_cold_chain:
+            cold_chain_enabled_compartments += 1
 
         total_compartment_weight += compartment_weight
         total_compartment_volume += compartment_volume
@@ -175,6 +187,11 @@ def validate_compartments(
         raise ValueError(
             "Debe existir al menos un compartimiento autorizado "
             "para mercancías peligrosas."
+        )
+
+    if cold_chain_enabled_compartments == 0:
+        raise ValueError(
+            "Debe existir al menos un compartimiento con soporte para cadena de frío."
         )
 
     if not math.isclose(

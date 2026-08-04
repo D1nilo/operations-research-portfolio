@@ -11,6 +11,7 @@ REQUIRED_COLUMNS = {
     "priority",
     "is_hazardous",
     "hazard_class",
+    "requires_cold_chain",
 }
 
 NUMERIC_COLUMNS = {
@@ -18,6 +19,11 @@ NUMERIC_COLUMNS = {
     "volume_m3",
     "revenue_usd",
     "priority",
+}
+
+BOOLEAN_COLUMNS = {
+    "is_hazardous",
+    "requires_cold_chain",
 }
 
 ALLOWED_PRIORITIES = {1, 2, 3}
@@ -45,15 +51,16 @@ def validate_cargo_data(cargo_data: pd.DataFrame) -> None:
         "revenue_usd",
         "priority",
         "is_hazardous",
+        "requires_cold_chain",
     ]
 
-    if cargo_data[required_non_nullable_columns].isnull().any().any():
-        null_columns = (
-            cargo_data[required_non_nullable_columns]
-            .columns[cargo_data[required_non_nullable_columns].isnull().any()]
-            .tolist()
-        )
+    null_columns = (
+        cargo_data[required_non_nullable_columns]
+        .columns[cargo_data[required_non_nullable_columns].isnull().any()]
+        .tolist()
+    )
 
+    if null_columns:
         raise ValueError(f"Existen valores nulos en las columnas: {null_columns}")
 
     if cargo_data["cargo_id"].duplicated().any():
@@ -71,8 +78,9 @@ def validate_cargo_data(cargo_data: pd.DataFrame) -> None:
         if not pd.api.types.is_numeric_dtype(cargo_data[column]):
             raise TypeError(f"La columna '{column}' debe contener valores numéricos.")
 
-    if not pd.api.types.is_bool_dtype(cargo_data["is_hazardous"]):
-        raise TypeError("La columna 'is_hazardous' debe contener valores booleanos.")
+    for column in BOOLEAN_COLUMNS:
+        if not pd.api.types.is_bool_dtype(cargo_data[column]):
+            raise TypeError(f"La columna '{column}' debe contener valores booleanos.")
 
     if (cargo_data["weight_kg"] <= 0).any():
         raise ValueError("El peso de todas las cargas debe ser mayor que cero.")
@@ -95,11 +103,22 @@ def validate_cargo_data(cargo_data: pd.DataFrame) -> None:
             f"Existen prioridades no permitidas: {sorted(invalid_priorities)}"
         )
 
+    empty_cargo_ids = cargo_data["cargo_id"].astype(str).str.strip().eq("")
+
+    if empty_cargo_ids.any():
+        raise ValueError("Todas las cargas deben incluir un identificador.")
+
     empty_descriptions = cargo_data["description"].astype(str).str.strip().eq("")
 
     if empty_descriptions.any():
         raise ValueError("Todas las cargas deben incluir una descripción.")
 
+    validate_hazardous_cargo(cargo_data)
+
+
+def validate_hazardous_cargo(
+    cargo_data: pd.DataFrame,
+) -> None:
     hazardous_cargo = cargo_data[cargo_data["is_hazardous"]]
 
     hazardous_without_class = (
@@ -153,6 +172,26 @@ def validate_business_rules(
     cargo_data: pd.DataFrame,
     aircraft_config: dict[str, Any],
 ) -> None:
+    validate_priority_requirements(
+        cargo_data,
+        aircraft_config,
+    )
+
+    validate_hazardous_capacity(
+        cargo_data,
+        aircraft_config,
+    )
+
+    validate_cold_chain_capacity(
+        cargo_data,
+        aircraft_config,
+    )
+
+
+def validate_priority_requirements(
+    cargo_data: pd.DataFrame,
+    aircraft_config: dict[str, Any],
+) -> None:
     minimum_priority_items = int(aircraft_config["minimum_priority_3_items"])
 
     high_priority_cargo = cargo_data[cargo_data["priority"] == 3]
@@ -167,41 +206,48 @@ def validate_business_rules(
             f"Disponibles: {available_priority_items}."
         )
 
-    if minimum_priority_items > 0:
-        lightest_priority_items = high_priority_cargo.nsmallest(
-            minimum_priority_items,
-            "weight_kg",
+    if minimum_priority_items == 0:
+        return
+
+    lightest_priority_items = high_priority_cargo.nsmallest(
+        minimum_priority_items,
+        "weight_kg",
+    )
+
+    minimum_required_weight = float(lightest_priority_items["weight_kg"].sum())
+
+    if minimum_required_weight > float(aircraft_config["max_weight_kg"]):
+        raise ValueError(
+            "Las cargas prioritarias mínimas "
+            "no caben por peso. "
+            "Peso mínimo requerido: "
+            f"{minimum_required_weight:.2f} kg. "
+            "Capacidad disponible: "
+            f"{float(aircraft_config['max_weight_kg']):.2f} kg."
         )
 
-        minimum_required_weight = float(lightest_priority_items["weight_kg"].sum())
+    smallest_priority_items = high_priority_cargo.nsmallest(
+        minimum_priority_items,
+        "volume_m3",
+    )
 
-        if minimum_required_weight > float(aircraft_config["max_weight_kg"]):
-            raise ValueError(
-                "Las cargas prioritarias mínimas "
-                "no caben por peso. "
-                "Peso mínimo requerido: "
-                f"{minimum_required_weight:.2f} kg. "
-                "Capacidad disponible: "
-                f"{float(aircraft_config['max_weight_kg']):.2f} kg."
-            )
+    minimum_required_volume = float(smallest_priority_items["volume_m3"].sum())
 
-        smallest_priority_items = high_priority_cargo.nsmallest(
-            minimum_priority_items,
-            "volume_m3",
+    if minimum_required_volume > float(aircraft_config["max_volume_m3"]):
+        raise ValueError(
+            "Las cargas prioritarias mínimas "
+            "no caben por volumen. "
+            "Volumen mínimo requerido: "
+            f"{minimum_required_volume:.2f} m³. "
+            "Capacidad disponible: "
+            f"{float(aircraft_config['max_volume_m3']):.2f} m³."
         )
 
-        minimum_required_volume = float(smallest_priority_items["volume_m3"].sum())
 
-        if minimum_required_volume > float(aircraft_config["max_volume_m3"]):
-            raise ValueError(
-                "Las cargas prioritarias mínimas "
-                "no caben por volumen. "
-                "Volumen mínimo requerido: "
-                f"{minimum_required_volume:.2f} m³. "
-                "Capacidad disponible: "
-                f"{float(aircraft_config['max_volume_m3']):.2f} m³."
-            )
-
+def validate_hazardous_capacity(
+    cargo_data: pd.DataFrame,
+    aircraft_config: dict[str, Any],
+) -> None:
     hazardous_cargo = cargo_data[cargo_data["is_hazardous"]]
 
     if hazardous_cargo.empty:
@@ -241,4 +287,53 @@ def validate_business_rules(
         raise ValueError(
             "Ninguna carga peligrosa puede ser transportada "
             "por falta de capacidad de volumen autorizada."
+        )
+
+
+def validate_cold_chain_capacity(
+    cargo_data: pd.DataFrame,
+    aircraft_config: dict[str, Any],
+) -> None:
+    cold_chain_cargo = cargo_data[cargo_data["requires_cold_chain"]]
+
+    if cold_chain_cargo.empty:
+        return
+
+    cold_chain_compartments = [
+        compartment
+        for compartment in aircraft_config["compartments"]
+        if compartment["supports_cold_chain"]
+    ]
+
+    if not cold_chain_compartments:
+        raise ValueError(
+            "Existen cargas que requieren cadena de frío, "
+            "pero la aeronave no posee compartimientos "
+            "refrigerados."
+        )
+
+    total_cold_chain_weight_capacity = sum(
+        float(compartment["max_weight_kg"]) for compartment in cold_chain_compartments
+    )
+
+    total_cold_chain_volume_capacity = sum(
+        float(compartment["max_volume_m3"]) for compartment in cold_chain_compartments
+    )
+
+    lightest_cold_chain_weight = float(cold_chain_cargo["weight_kg"].min())
+
+    smallest_cold_chain_volume = float(cold_chain_cargo["volume_m3"].min())
+
+    if lightest_cold_chain_weight > total_cold_chain_weight_capacity:
+        raise ValueError(
+            "Ninguna carga con cadena de frío puede ser "
+            "transportada por falta de capacidad de peso "
+            "refrigerada."
+        )
+
+    if smallest_cold_chain_volume > total_cold_chain_volume_capacity:
+        raise ValueError(
+            "Ninguna carga con cadena de frío puede ser "
+            "transportada por falta de capacidad de volumen "
+            "refrigerada."
         )

@@ -108,14 +108,14 @@ def build_cargo_model(
 
     hazardous_cargo = cargo_data[cargo_data["is_hazardous"]]
 
-    unauthorized_compartments = [
+    unauthorized_hazardous_compartments = [
         compartment
         for compartment in compartments
         if not compartment["allows_hazardous"]
     ]
 
     for row in hazardous_cargo.itertuples(index=False):
-        for compartment in unauthorized_compartments:
+        for compartment in unauthorized_hazardous_compartments:
             compartment_id = compartment["compartment_id"]
 
             solver.Add(
@@ -127,6 +127,29 @@ def build_cargo_model(
                 ]
                 == 0,
                 f"hazardous_restriction_{row.cargo_id}_{compartment_id}",
+            )
+
+    cold_chain_cargo = cargo_data[cargo_data["requires_cold_chain"]]
+
+    unsupported_cold_chain_compartments = [
+        compartment
+        for compartment in compartments
+        if not compartment["supports_cold_chain"]
+    ]
+
+    for row in cold_chain_cargo.itertuples(index=False):
+        for compartment in unsupported_cold_chain_compartments:
+            compartment_id = compartment["compartment_id"]
+
+            solver.Add(
+                assignment_variables[
+                    (
+                        row.cargo_id,
+                        compartment_id,
+                    )
+                ]
+                == 0,
+                f"cold_chain_restriction_{row.cargo_id}_{compartment_id}",
             )
 
     high_priority_cargo = cargo_data[cargo_data["priority"] == 3]

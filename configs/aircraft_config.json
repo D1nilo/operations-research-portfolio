@@ -9,21 +9,24 @@
       "description": "Compartimiento delantero",
       "max_weight_kg": 1600,
       "max_volume_m3": 8.0,
-      "allows_hazardous": false
+      "allows_hazardous": false,
+      "supports_cold_chain": true
     },
     {
       "compartment_id": "MAIN",
       "description": "Compartimiento principal",
       "max_weight_kg": 2200,
       "max_volume_m3": 10.0,
-      "allows_hazardous": true
+      "allows_hazardous": true,
+      "supports_cold_chain": false
     },
     {
       "compartment_id": "AFT",
       "description": "Compartimiento trasero",
       "max_weight_kg": 1200,
       "max_volume_m3": 6.0,
-      "allows_hazardous": false
+      "allows_hazardous": false,
+      "supports_cold_chain": false
     }
   ]
 }

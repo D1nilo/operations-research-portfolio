@@ -11,6 +11,13 @@ REQUIRED_COLUMNS = {
     "priority",
     "is_hazardous",
     "hazard_class",
+    "requires_cold_chain",
+}
+
+
+BOOLEAN_COLUMNS = {
+    "is_hazardous",
+    "requires_cold_chain",
 }
 
 
@@ -32,17 +39,24 @@ def load_cargo_data(
     if missing_columns:
         raise ValueError(f"Faltan columnas obligatorias: {sorted(missing_columns)}")
 
-    cargo_data["is_hazardous"] = (
-        cargo_data["is_hazardous"]
-        .astype(str)
-        .str.strip()
-        .str.lower()
-        .map(
+    for column in BOOLEAN_COLUMNS:
+        normalized_values = cargo_data[column].astype(str).str.strip().str.lower()
+
+        invalid_values = set(
+            normalized_values[~normalized_values.isin({"true", "false"})].tolist()
+        )
+
+        if invalid_values:
+            raise ValueError(
+                f"La columna '{column}' contiene valores "
+                f"booleanos inválidos: {sorted(invalid_values)}"
+            )
+
+        cargo_data[column] = normalized_values.map(
             {
                 "true": True,
                 "false": False,
             }
         )
-    )
 
     return cargo_data

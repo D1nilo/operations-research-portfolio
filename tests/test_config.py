@@ -22,6 +22,7 @@ def create_valid_config() -> dict[str, object]:
                 "max_weight_kg": 1600,
                 "max_volume_m3": 8.0,
                 "allows_hazardous": False,
+                "supports_cold_chain": True,
             },
             {
                 "compartment_id": "MAIN",
@@ -29,6 +30,7 @@ def create_valid_config() -> dict[str, object]:
                 "max_weight_kg": 2200,
                 "max_volume_m3": 10.0,
                 "allows_hazardous": True,
+                "supports_cold_chain": False,
             },
             {
                 "compartment_id": "AFT",
@@ -36,6 +38,7 @@ def create_valid_config() -> dict[str, object]:
                 "max_weight_kg": 1200,
                 "max_volume_m3": 6.0,
                 "allows_hazardous": False,
+                "supports_cold_chain": False,
             },
         ],
     }
@@ -226,6 +229,46 @@ def test_validate_aircraft_config_rejects_no_hazardous_compartment() -> None:
         validate_aircraft_config(config)
 
 
+def test_validate_aircraft_config_rejects_missing_supports_cold_chain() -> None:
+    config = create_valid_config()
+    compartments = get_compartments(config)
+
+    del compartments[0]["supports_cold_chain"]
+
+    with pytest.raises(
+        ValueError,
+        match="supports_cold_chain",
+    ):
+        validate_aircraft_config(config)
+
+
+def test_validate_aircraft_config_rejects_non_boolean_supports_cold_chain() -> None:
+    config = create_valid_config()
+    compartments = get_compartments(config)
+
+    compartments[0]["supports_cold_chain"] = "true"
+
+    with pytest.raises(
+        TypeError,
+        match="supports_cold_chain",
+    ):
+        validate_aircraft_config(config)
+
+
+def test_validate_aircraft_config_rejects_no_cold_chain_compartment() -> None:
+    config = create_valid_config()
+    compartments = get_compartments(config)
+
+    for compartment in compartments:
+        compartment["supports_cold_chain"] = False
+
+    with pytest.raises(
+        ValueError,
+        match="soporte para cadena de frío",
+    ):
+        validate_aircraft_config(config)
+
+
 def test_validate_aircraft_config_rejects_weight_total_mismatch() -> None:
     config = create_valid_config()
     compartments = get_compartments(config)
@@ -275,4 +318,11 @@ def test_load_aircraft_config_reads_json(
         if compartment["allows_hazardous"]
     ]
 
+    cold_chain_compartments = [
+        compartment["compartment_id"]
+        for compartment in config["compartments"]
+        if compartment["supports_cold_chain"]
+    ]
+
     assert hazardous_compartments == ["MAIN"]
+    assert cold_chain_compartments == ["FORWARD"]
