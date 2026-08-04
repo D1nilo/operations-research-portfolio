@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-
 REQUIRED_CONFIG_KEYS = {
     "aircraft_id",
     "max_weight_kg",

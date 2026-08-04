@@ -39,7 +39,10 @@ def test_solver_returns_optimal_solution() -> None:
         create_aircraft_config(),
     )
 
-    result = solve_cargo_model(model, cargo_data)
+    result = solve_cargo_model(
+        model,
+        cargo_data,
+    )
 
     assert result.status == "OPTIMAL"
     assert result.total_weight_kg <= 1000
@@ -54,7 +57,10 @@ def test_solver_maximizes_revenue() -> None:
         create_aircraft_config(),
     )
 
-    result = solve_cargo_model(model, cargo_data)
+    result = solve_cargo_model(
+        model,
+        cargo_data,
+    )
 
     assert result.total_revenue_usd == 12000
     assert set(result.selected_cargo["cargo_id"]) == {
@@ -79,4 +85,43 @@ def test_solver_rejects_infeasible_model() -> None:
         RuntimeError,
         match="INFEASIBLE",
     ):
-        solve_cargo_model(model, cargo_data)
+        solve_cargo_model(
+            model,
+            cargo_data,
+        )
+
+
+def test_solver_returns_technical_metrics() -> None:
+    cargo_data = create_cargo_data()
+
+    model = build_cargo_model(
+        cargo_data,
+        create_aircraft_config(),
+    )
+
+    result = solve_cargo_model(
+        model,
+        cargo_data,
+    )
+
+    assert result.wall_time_ms >= 0
+    assert result.iterations >= 0
+    assert result.nodes >= 0
+    assert result.variable_count == 3
+    assert result.constraint_count == 3
+
+
+def test_solver_objective_matches_total_revenue() -> None:
+    cargo_data = create_cargo_data()
+
+    model = build_cargo_model(
+        cargo_data,
+        create_aircraft_config(),
+    )
+
+    result = solve_cargo_model(
+        model,
+        cargo_data,
+    )
+
+    assert result.objective_value == pytest.approx(result.total_revenue_usd)
