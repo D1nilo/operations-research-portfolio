@@ -9,6 +9,10 @@ from ortools.linear_solver import pywraplp
 class CargoOptimizationModel:
     solver: pywraplp.Solver
     selection_variables: dict[str, pywraplp.Variable]
+    assignment_variables: dict[
+        tuple[str, str],
+        pywraplp.Variable,
+    ]
 
 
 def build_cargo_model(
@@ -20,10 +24,36 @@ def build_cargo_model(
     if solver is None:
         raise RuntimeError("No fue posible inicializar el solver SCIP.")
 
+    compartments = aircraft_config["compartments"]
+
     selection_variables = {
         row.cargo_id: solver.BoolVar(f"select_{row.cargo_id}")
         for row in cargo_data.itertuples(index=False)
     }
+
+    assignment_variables = {
+        (
+            row.cargo_id,
+            compartment["compartment_id"],
+        ): solver.BoolVar(f"assign_{row.cargo_id}_{compartment['compartment_id']}")
+        for row in cargo_data.itertuples(index=False)
+        for compartment in compartments
+    }
+
+    for row in cargo_data.itertuples(index=False):
+        solver.Add(
+            sum(
+                assignment_variables[
+                    (
+                        row.cargo_id,
+                        compartment["compartment_id"],
+                    )
+                ]
+                for compartment in compartments
+            )
+            == selection_variables[row.cargo_id],
+            f"assignment_link_{row.cargo_id}",
+        )
 
     solver.Add(
         sum(
@@ -31,7 +61,7 @@ def build_cargo_model(
             for row in cargo_data.itertuples(index=False)
         )
         <= aircraft_config["max_weight_kg"],
-        "max_weight_constraint",
+        "max_aircraft_weight_constraint",
     )
 
     solver.Add(
@@ -40,8 +70,26 @@ def build_cargo_model(
             for row in cargo_data.itertuples(index=False)
         )
         <= aircraft_config["max_volume_m3"],
-        "max_volume_constraint",
+        "max_aircraft_volume_constraint",
     )
+
+    for compartment in compartments:
+        compartment_id = compartment["compartment_id"]
+
+        solver.Add(
+            sum(
+                row.weight_kg
+                * assignment_variables[
+                    (
+                        row.cargo_id,
+                        compartment_id,
+                    )
+                ]
+                for row in cargo_data.itertuples(index=False)
+            )
+            <= compartment["max_weight_kg"],
+            f"max_weight_{compartment_id}",
+        )
 
     high_priority_cargo = cargo_data[cargo_data["priority"] == 3]
 
@@ -64,4 +112,5 @@ def build_cargo_model(
     return CargoOptimizationModel(
         solver=solver,
         selection_variables=selection_variables,
+        assignment_variables=assignment_variables,
     )

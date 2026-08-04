@@ -28,6 +28,20 @@ def create_aircraft_config() -> dict[str, object]:
         "max_weight_kg": 1000,
         "max_volume_m3": 6.0,
         "minimum_priority_3_items": 1,
+        "compartments": [
+            {
+                "compartment_id": "FORWARD",
+                "description": "Compartimiento delantero",
+                "max_weight_kg": 600,
+                "max_volume_m3": 3.0,
+            },
+            {
+                "compartment_id": "AFT",
+                "description": "Compartimiento trasero",
+                "max_weight_kg": 400,
+                "max_volume_m3": 3.0,
+            },
+        ],
     }
 
 
@@ -63,6 +77,7 @@ def test_solver_maximizes_revenue() -> None:
     )
 
     assert result.total_revenue_usd == 12000
+
     assert set(result.selected_cargo["cargo_id"]) == {
         "C001",
         "C002",
@@ -107,8 +122,8 @@ def test_solver_returns_technical_metrics() -> None:
     assert result.wall_time_ms >= 0
     assert result.iterations >= 0
     assert result.nodes >= 0
-    assert result.variable_count == 3
-    assert result.constraint_count == 3
+    assert result.variable_count == 9
+    assert result.constraint_count == 8
 
 
 def test_solver_objective_matches_total_revenue() -> None:

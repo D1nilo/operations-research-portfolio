@@ -9,10 +9,10 @@
   "volume_utilization_pct": 100.0,
   "solver_metrics": {
     "objective_value": 39100.0,
-    "wall_time_ms": 9,
-    "iterations": 6,
+    "wall_time_ms": 54,
+    "iterations": 13,
     "nodes": 1,
-    "variable_count": 10,
-    "constraint_count": 3
+    "variable_count": 40,
+    "constraint_count": 16
   }
 }

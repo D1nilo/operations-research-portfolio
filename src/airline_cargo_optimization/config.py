@@ -1,4 +1,5 @@
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -7,6 +8,14 @@ REQUIRED_CONFIG_KEYS = {
     "max_weight_kg",
     "max_volume_m3",
     "minimum_priority_3_items",
+    "compartments",
+}
+
+REQUIRED_COMPARTMENT_KEYS = {
+    "compartment_id",
+    "description",
+    "max_weight_kg",
+    "max_volume_m3",
 }
 
 
@@ -42,27 +51,22 @@ def validate_aircraft_config(
     if not isinstance(aircraft_id, str) or not aircraft_id.strip():
         raise ValueError("El identificador de la aeronave no puede estar vacío.")
 
-    numeric_keys = {
+    max_weight_kg = validate_positive_number(
+        config["max_weight_kg"],
         "max_weight_kg",
+    )
+
+    max_volume_m3 = validate_positive_number(
+        config["max_volume_m3"],
         "max_volume_m3",
-        "minimum_priority_3_items",
-    }
-
-    for key in numeric_keys:
-        value = config[key]
-
-        if not isinstance(value, int | float):
-            raise TypeError(f"El parámetro '{key}' debe ser numérico.")
-
-    if config["max_weight_kg"] <= 0:
-        raise ValueError("La capacidad máxima de peso debe ser mayor que cero.")
-
-    if config["max_volume_m3"] <= 0:
-        raise ValueError("La capacidad máxima de volumen debe ser mayor que cero.")
+    )
 
     minimum_priority = config["minimum_priority_3_items"]
 
-    if not isinstance(minimum_priority, int):
+    if isinstance(minimum_priority, bool) or not isinstance(
+        minimum_priority,
+        int,
+    ):
         raise TypeError(
             "La cantidad mínima de cargas prioritarias debe ser un número entero."
         )
@@ -71,3 +75,134 @@ def validate_aircraft_config(
         raise ValueError(
             "La cantidad mínima de cargas prioritarias no puede ser negativa."
         )
+
+    compartments = config["compartments"]
+
+    validate_compartments(
+        compartments,
+        max_weight_kg,
+        max_volume_m3,
+    )
+
+
+def validate_compartments(
+    compartments: Any,
+    aircraft_max_weight_kg: float,
+    aircraft_max_volume_m3: float,
+) -> None:
+    if not isinstance(compartments, list):
+        raise TypeError("El parámetro 'compartments' debe ser una lista.")
+
+    if not compartments:
+        raise ValueError("La aeronave debe contener al menos un compartimiento.")
+
+    compartment_ids: list[str] = []
+    total_compartment_weight = 0.0
+    total_compartment_volume = 0.0
+
+    for position, compartment in enumerate(
+        compartments,
+        start=1,
+    ):
+        if not isinstance(compartment, dict):
+            raise TypeError(
+                "Cada compartimiento debe estar representado "
+                "por un objeto de configuración."
+            )
+
+        missing_keys = REQUIRED_COMPARTMENT_KEYS.difference(compartment)
+
+        if missing_keys:
+            raise ValueError(
+                f"El compartimiento de la posición {position} "
+                "no contiene todos los parámetros obligatorios: "
+                f"{sorted(missing_keys)}"
+            )
+
+        compartment_id = compartment["compartment_id"]
+
+        if not isinstance(compartment_id, str) or not compartment_id.strip():
+            raise ValueError(
+                "El identificador del compartimiento no puede estar vacío."
+            )
+
+        normalized_id = compartment_id.strip().upper()
+        compartment_ids.append(normalized_id)
+
+        description = compartment["description"]
+
+        if not isinstance(description, str) or not description.strip():
+            raise ValueError(
+                f"El compartimiento '{normalized_id}' debe incluir una descripción."
+            )
+
+        compartment_weight = validate_positive_number(
+            compartment["max_weight_kg"],
+            f"{normalized_id}.max_weight_kg",
+        )
+
+        compartment_volume = validate_positive_number(
+            compartment["max_volume_m3"],
+            f"{normalized_id}.max_volume_m3",
+        )
+
+        total_compartment_weight += compartment_weight
+        total_compartment_volume += compartment_volume
+
+    duplicated_ids = {
+        compartment_id
+        for compartment_id in compartment_ids
+        if compartment_ids.count(compartment_id) > 1
+    }
+
+    if duplicated_ids:
+        raise ValueError(
+            "Existen identificadores de compartimiento duplicados: "
+            f"{sorted(duplicated_ids)}"
+        )
+
+    if not math.isclose(
+        total_compartment_weight,
+        aircraft_max_weight_kg,
+        rel_tol=1e-9,
+        abs_tol=1e-6,
+    ):
+        raise ValueError(
+            "La suma de las capacidades de peso de los "
+            "compartimientos no coincide con la capacidad total "
+            "de la aeronave. "
+            f"Compartimientos: {total_compartment_weight:.2f} kg. "
+            f"Aeronave: {aircraft_max_weight_kg:.2f} kg."
+        )
+
+    if not math.isclose(
+        total_compartment_volume,
+        aircraft_max_volume_m3,
+        rel_tol=1e-9,
+        abs_tol=1e-6,
+    ):
+        raise ValueError(
+            "La suma de las capacidades de volumen de los "
+            "compartimientos no coincide con la capacidad total "
+            "de la aeronave. "
+            f"Compartimientos: {total_compartment_volume:.2f} m³. "
+            f"Aeronave: {aircraft_max_volume_m3:.2f} m³."
+        )
+
+
+def validate_positive_number(
+    value: Any,
+    parameter_name: str,
+) -> float:
+    if isinstance(value, bool) or not isinstance(
+        value,
+        int | float,
+    ):
+        raise TypeError(f"El parámetro '{parameter_name}' debe ser numérico.")
+
+    numeric_value = float(value)
+
+    if numeric_value <= 0:
+        raise ValueError(f"El parámetro '{parameter_name}' debe ser mayor que cero.")
+
+    return numeric_value
