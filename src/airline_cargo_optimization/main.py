@@ -1,6 +1,9 @@
 from airline_cargo_optimization.config import load_aircraft_config
 from airline_cargo_optimization.data_loader import load_cargo_data
-from airline_cargo_optimization.data_validation import validate_cargo_data
+from airline_cargo_optimization.data_validation import (
+    validate_business_rules,
+    validate_cargo_data,
+)
 from airline_cargo_optimization.exporter import (
     export_selected_cargo_csv,
     export_solution_summary_json,
@@ -15,11 +18,20 @@ from airline_cargo_optimization.visualization import (
 
 
 def main() -> None:
-    cargo_data = load_cargo_data("data/sample/cargo_items.csv")
+    cargo_data = load_cargo_data(
+        "data/sample/cargo_items.csv"
+    )
 
     validate_cargo_data(cargo_data)
 
-    aircraft_config = load_aircraft_config("configs/aircraft_config.json")
+    aircraft_config = load_aircraft_config(
+        "configs/aircraft_config.json"
+    )
+
+    validate_business_rules(
+        cargo_data,
+        aircraft_config,
+    )
 
     model = build_cargo_model(
         cargo_data,
@@ -65,11 +77,26 @@ def main() -> None:
     print("\nResumen ejecutivo:")
     print(f"Aeronave: {summary.aircraft_id}")
     print(f"Cargas seleccionadas: {summary.selected_items}")
-    print(f"Ingreso total: USD {summary.total_revenue_usd:,.2f}")
-    print(f"Peso utilizado: {summary.total_weight_kg:,.2f} kg")
-    print(f"Volumen utilizado: {summary.total_volume_m3:,.2f} m³")
-    print(f"Utilización de peso: {summary.weight_utilization_pct:.2f}%")
-    print(f"Utilización de volumen: {summary.volume_utilization_pct:.2f}%")
+    print(
+        f"Ingreso total: USD "
+        f"{summary.total_revenue_usd:,.2f}"
+    )
+    print(
+        f"Peso utilizado: "
+        f"{summary.total_weight_kg:,.2f} kg"
+    )
+    print(
+        f"Volumen utilizado: "
+        f"{summary.total_volume_m3:,.2f} m³"
+    )
+    print(
+        f"Utilización de peso: "
+        f"{summary.weight_utilization_pct:.2f}%"
+    )
+    print(
+        f"Utilización de volumen: "
+        f"{summary.volume_utilization_pct:.2f}%"
+    )
 
     print("\nGráficos generados:")
     print(capacity_chart)

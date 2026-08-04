@@ -74,3 +74,68 @@ def validate_cargo_data(cargo_data: pd.DataFrame) -> None:
 
     if empty_descriptions.any():
         raise ValueError("Todas las cargas deben incluir una descripción.")
+from typing import Any
+
+
+def validate_business_rules(
+    cargo_data: pd.DataFrame,
+    aircraft_config: dict[str, Any],
+) -> None:
+    minimum_priority_items = int(
+        aircraft_config["minimum_priority_3_items"]
+    )
+
+    high_priority_cargo = cargo_data[
+        cargo_data["priority"] == 3
+    ]
+
+    available_priority_items = len(high_priority_cargo)
+
+    if minimum_priority_items > available_priority_items:
+        raise ValueError(
+            "La cantidad mínima de cargas de prioridad 3 "
+            "no puede cumplirse. "
+            f"Requeridas: {minimum_priority_items}. "
+            f"Disponibles: {available_priority_items}."
+        )
+
+    if minimum_priority_items == 0:
+        return
+
+    lightest_priority_items = high_priority_cargo.nsmallest(
+        minimum_priority_items,
+        "weight_kg",
+    )
+
+    minimum_required_weight = float(
+        lightest_priority_items["weight_kg"].sum()
+    )
+
+    if minimum_required_weight > float(
+        aircraft_config["max_weight_kg"]
+    ):
+        raise ValueError(
+            "Las cargas prioritarias mínimas no caben por peso. "
+            f"Peso mínimo requerido: {minimum_required_weight:.2f} kg. "
+            "Capacidad disponible: "
+            f"{float(aircraft_config['max_weight_kg']):.2f} kg."
+        )
+
+    smallest_priority_items = high_priority_cargo.nsmallest(
+        minimum_priority_items,
+        "volume_m3",
+    )
+
+    minimum_required_volume = float(
+        smallest_priority_items["volume_m3"].sum()
+    )
+
+    if minimum_required_volume > float(
+        aircraft_config["max_volume_m3"]
+    ):
+        raise ValueError(
+            "Las cargas prioritarias mínimas no caben por volumen. "
+            f"Volumen mínimo requerido: {minimum_required_volume:.2f} m³. "
+            "Capacidad disponible: "
+            f"{float(aircraft_config['max_volume_m3']):.2f} m³."
+        )

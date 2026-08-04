@@ -46,6 +46,27 @@ def create_result() -> CargoOptimizationResult:
         total_weight_kg=1000,
         total_volume_m3=5.0,
         total_revenue_usd=12000,
+        wall_time_ms=10,
+        iterations=0,
+        nodes=1,
+        variable_count=2,
+        constraint_count=3,
+    )
+
+
+def create_empty_result() -> CargoOptimizationResult:
+    return CargoOptimizationResult(
+        status="OPTIMAL",
+        objective_value=0,
+        selected_cargo=pd.DataFrame(),
+        total_weight_kg=0,
+        total_volume_m3=0,
+        total_revenue_usd=0,
+        wall_time_ms=0,
+        iterations=0,
+        nodes=0,
+        variable_count=0,
+        constraint_count=0,
     )
 
 
@@ -80,20 +101,11 @@ def test_create_selected_cargo_revenue_chart(
 def test_revenue_chart_rejects_empty_selection(
     tmp_path: Path,
 ) -> None:
-    empty_result = CargoOptimizationResult(
-        status="OPTIMAL",
-        objective_value=0,
-        selected_cargo=pd.DataFrame(),
-        total_weight_kg=0,
-        total_volume_m3=0,
-        total_revenue_usd=0,
-    )
-
     with pytest.raises(
         ValueError,
         match="No existen cargas seleccionadas",
     ):
         create_selected_cargo_revenue_chart(
-            empty_result,
+            create_empty_result(),
             tmp_path / "empty.png",
         )

@@ -26,6 +26,11 @@ def create_result() -> CargoOptimizationResult:
         total_weight_kg=1000,
         total_volume_m3=5.0,
         total_revenue_usd=12000,
+        wall_time_ms=10,
+        iterations=0,
+        nodes=1,
+        variable_count=2,
+        constraint_count=3,
     )
 
 
@@ -44,7 +49,11 @@ def test_build_solution_summary_calculates_utilization() -> None:
     )
 
     assert summary.status == "OPTIMAL"
+    assert summary.aircraft_id == "TEST-001"
     assert summary.selected_items == 2
+    assert summary.total_revenue_usd == 12000
+    assert summary.total_weight_kg == 1000
+    assert summary.total_volume_m3 == 5.0
     assert summary.weight_utilization_pct == 50.0
     assert summary.volume_utilization_pct == 50.0
 

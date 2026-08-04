@@ -14,6 +14,11 @@ class CargoOptimizationResult:
     total_weight_kg: float
     total_volume_m3: float
     total_revenue_usd: float
+    wall_time_ms: int
+    iterations: int
+    nodes: int
+    variable_count: int
+    constraint_count: int
 
 
 def solve_cargo_model(
@@ -47,13 +52,28 @@ def solve_cargo_model(
         if variable.solution_value() > 0.5
     }
 
-    selected_cargo = cargo_data[cargo_data["cargo_id"].isin(selected_ids)].copy()
+    selected_cargo = cargo_data[
+        cargo_data["cargo_id"].isin(selected_ids)
+    ].copy()
 
     return CargoOptimizationResult(
         status=status,
-        objective_value=model.solver.Objective().Value(),
+        objective_value=float(
+            model.solver.Objective().Value()
+        ),
         selected_cargo=selected_cargo,
-        total_weight_kg=float(selected_cargo["weight_kg"].sum()),
-        total_volume_m3=float(selected_cargo["volume_m3"].sum()),
-        total_revenue_usd=float(selected_cargo["revenue_usd"].sum()),
+        total_weight_kg=float(
+            selected_cargo["weight_kg"].sum()
+        ),
+        total_volume_m3=float(
+            selected_cargo["volume_m3"].sum()
+        ),
+        total_revenue_usd=float(
+            selected_cargo["revenue_usd"].sum()
+        ),
+        wall_time_ms=model.solver.WallTime(),
+        iterations=model.solver.Iterations(),
+        nodes=model.solver.Nodes(),
+        variable_count=model.solver.NumVariables(),
+        constraint_count=model.solver.NumConstraints(),
     )

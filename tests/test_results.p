@@ -1,0 +1,5 @@
+wall_time_ms=10,
+iterations=0,
+nodes=1,
+variable_count=2,
+constraint_count=3,
