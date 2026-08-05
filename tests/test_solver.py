@@ -13,34 +13,40 @@ def create_cargo_data() -> pd.DataFrame:
                 "C002",
                 "C003",
                 "C004",
+                "C005",
             ],
             "description": [
                 "Vacunas refrigeradas",
                 "Baterías de litio",
                 "Equipamiento médico",
+                "Alimentos perecibles",
                 "Documentos urgentes",
             ],
             "weight_kg": [
                 300,
                 350,
                 600,
+                250,
                 100,
             ],
             "volume_m3": [
                 1.5,
                 1.8,
                 3.0,
+                1.2,
                 0.5,
             ],
             "revenue_usd": [
                 7200,
                 6500,
                 7000,
+                4000,
                 1800,
             ],
             "priority": [
                 3,
                 3,
+                2,
                 2,
                 3,
             ],
@@ -49,15 +55,18 @@ def create_cargo_data() -> pd.DataFrame:
                 True,
                 False,
                 False,
+                False,
             ],
             "hazard_class": [
                 "",
                 "CLASS_9",
                 "",
                 "",
+                "",
             ],
             "requires_cold_chain": [
                 True,
+                False,
                 False,
                 False,
                 False,
@@ -69,23 +78,23 @@ def create_cargo_data() -> pd.DataFrame:
 def create_aircraft_config() -> dict[str, object]:
     return {
         "aircraft_id": "TEST-001",
-        "max_weight_kg": 1800,
-        "max_volume_m3": 9.0,
+        "max_weight_kg": 2000,
+        "max_volume_m3": 10.0,
         "minimum_priority_3_items": 1,
         "compartments": [
             {
                 "compartment_id": "FORWARD",
                 "description": "Compartimiento delantero",
-                "max_weight_kg": 600,
-                "max_volume_m3": 3.0,
+                "max_weight_kg": 700,
+                "max_volume_m3": 3.5,
                 "allows_hazardous": False,
                 "supports_cold_chain": True,
             },
             {
                 "compartment_id": "MAIN",
                 "description": "Compartimiento principal",
-                "max_weight_kg": 800,
-                "max_volume_m3": 4.0,
+                "max_weight_kg": 900,
+                "max_volume_m3": 4.5,
                 "allows_hazardous": True,
                 "supports_cold_chain": False,
             },
@@ -97,6 +106,13 @@ def create_aircraft_config() -> dict[str, object]:
                 "allows_hazardous": False,
                 "supports_cold_chain": False,
             },
+        ],
+        "incompatible_cargo_pairs": [
+            {
+                "cargo_id_1": "C002",
+                "cargo_id_2": "C004",
+                "reason": ("Mercancía peligrosa incompatible con alimentos perecibles"),
+            }
         ],
     }
 
@@ -115,8 +131,8 @@ def test_solver_returns_optimal_solution() -> None:
     )
 
     assert result.status == "OPTIMAL"
-    assert result.total_weight_kg <= 1800
-    assert result.total_volume_m3 <= 9.0
+    assert result.total_weight_kg <= 2000
+    assert result.total_volume_m3 <= 10.0
 
 
 def test_solver_maximizes_revenue() -> None:
@@ -132,12 +148,13 @@ def test_solver_maximizes_revenue() -> None:
         cargo_data,
     )
 
-    assert result.total_revenue_usd == 16000
+    assert result.total_revenue_usd == 20000
 
     assert set(result.selected_cargo["cargo_id"]) == {
         "C001",
         "C003",
         "C004",
+        "C005",
     }
 
 
@@ -243,16 +260,70 @@ def test_cold_chain_cargo_uses_supported_compartment_when_selected() -> None:
     assert cold_chain_result.iloc[0]["compartment_id"] == "FORWARD"
 
 
-def test_solver_rejects_infeasible_model() -> None:
+def test_incompatible_cargo_uses_different_compartments_when_selected() -> None:
     cargo_data = create_cargo_data()
-
     config = create_aircraft_config()
-    config["max_weight_kg"] = 100
-    config["minimum_priority_3_items"] = 3
 
     model = build_cargo_model(
         cargo_data,
         config,
+    )
+
+    cargo_id_1 = "C002"
+    cargo_id_2 = "C004"
+
+    model.solver.Add(
+        model.selection_variables[cargo_id_1] == 1,
+        "force_first_incompatible_cargo",
+    )
+
+    model.solver.Add(
+        model.selection_variables[cargo_id_2] == 1,
+        "force_second_incompatible_cargo",
+    )
+
+    result = solve_cargo_model(
+        model,
+        cargo_data,
+    )
+
+    incompatible_result = result.selected_cargo[
+        result.selected_cargo["cargo_id"].isin(
+            {
+                cargo_id_1,
+                cargo_id_2,
+            }
+        )
+    ]
+
+    assert len(incompatible_result) == 2
+
+    assignments = incompatible_result.set_index("cargo_id")["compartment_id"].to_dict()
+
+    assert assignments[cargo_id_1] != assignments[cargo_id_2]
+
+
+def test_solver_rejects_forced_incompatible_same_compartment() -> None:
+    cargo_data = create_cargo_data()
+    config = create_aircraft_config()
+
+    model = build_cargo_model(
+        cargo_data,
+        config,
+    )
+
+    cargo_id_1 = "C002"
+    cargo_id_2 = "C004"
+    compartment_id = "MAIN"
+
+    model.solver.Add(
+        model.assignment_variables[(cargo_id_1, compartment_id)] == 1,
+        "force_first_cargo_into_main",
+    )
+
+    model.solver.Add(
+        model.assignment_variables[(cargo_id_2, compartment_id)] == 1,
+        "force_second_cargo_into_main",
     )
 
     with pytest.raises(
@@ -281,8 +352,8 @@ def test_solver_returns_technical_metrics() -> None:
     assert result.wall_time_ms >= 0
     assert result.iterations >= 0
     assert result.nodes >= 0
-    assert result.variable_count == 16
-    assert result.constraint_count == 17
+    assert result.variable_count == 20
+    assert result.constraint_count == 21
 
 
 def test_solver_objective_matches_total_revenue() -> None:

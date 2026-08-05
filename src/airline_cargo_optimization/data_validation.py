@@ -187,6 +187,11 @@ def validate_business_rules(
         aircraft_config,
     )
 
+    validate_incompatible_cargo_references(
+        cargo_data,
+        aircraft_config,
+    )
+
 
 def validate_priority_requirements(
     cargo_data: pd.DataFrame,
@@ -336,4 +341,33 @@ def validate_cold_chain_capacity(
             "Ninguna carga con cadena de frío puede ser "
             "transportada por falta de capacidad de volumen "
             "refrigerada."
+        )
+
+
+def validate_incompatible_cargo_references(
+    cargo_data: pd.DataFrame,
+    aircraft_config: dict[str, Any],
+) -> None:
+    available_cargo_ids = {
+        str(cargo_id).strip().upper() for cargo_id in cargo_data["cargo_id"]
+    }
+
+    missing_cargo_ids: set[str] = set()
+
+    for pair in aircraft_config["incompatible_cargo_pairs"]:
+        cargo_id_1 = str(pair["cargo_id_1"]).strip().upper()
+
+        cargo_id_2 = str(pair["cargo_id_2"]).strip().upper()
+
+        if cargo_id_1 not in available_cargo_ids:
+            missing_cargo_ids.add(cargo_id_1)
+
+        if cargo_id_2 not in available_cargo_ids:
+            missing_cargo_ids.add(cargo_id_2)
+
+    if missing_cargo_ids:
+        raise ValueError(
+            "Existen incompatibilidades que hacen referencia "
+            "a cargas no disponibles en el dataset: "
+            f"{sorted(missing_cargo_ids)}"
         )

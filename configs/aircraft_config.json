@@ -28,5 +28,17 @@
       "allows_hazardous": false,
       "supports_cold_chain": false
     }
+  ],
+  "incompatible_cargo_pairs": [
+    {
+      "cargo_id_1": "C011",
+      "cargo_id_2": "C004",
+      "reason": "Mercancía peligrosa incompatible con alimentos perecibles"
+    },
+    {
+      "cargo_id_1": "C012",
+      "cargo_id_2": "C013",
+      "reason": "Producto inflamable incompatible con vacunas refrigeradas"
+    }
   ]
 }

@@ -152,6 +152,32 @@ def build_cargo_model(
                 f"cold_chain_restriction_{row.cargo_id}_{compartment_id}",
             )
 
+    incompatible_pairs = aircraft_config["incompatible_cargo_pairs"]
+
+    for pair in incompatible_pairs:
+        cargo_id_1 = pair["cargo_id_1"]
+        cargo_id_2 = pair["cargo_id_2"]
+
+        for compartment in compartments:
+            compartment_id = compartment["compartment_id"]
+
+            solver.Add(
+                assignment_variables[
+                    (
+                        cargo_id_1,
+                        compartment_id,
+                    )
+                ]
+                + assignment_variables[
+                    (
+                        cargo_id_2,
+                        compartment_id,
+                    )
+                ]
+                <= 1,
+                f"incompatibility_{cargo_id_1}_{cargo_id_2}_{compartment_id}",
+            )
+
     high_priority_cargo = cargo_data[cargo_data["priority"] == 3]
 
     solver.Add(

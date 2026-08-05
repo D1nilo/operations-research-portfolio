@@ -41,6 +41,18 @@ def create_valid_config() -> dict[str, object]:
                 "supports_cold_chain": False,
             },
         ],
+        "incompatible_cargo_pairs": [
+            {
+                "cargo_id_1": "C011",
+                "cargo_id_2": "C004",
+                "reason": ("Mercancía peligrosa incompatible con alimentos perecibles"),
+            },
+            {
+                "cargo_id_1": "C012",
+                "cargo_id_2": "C013",
+                "reason": ("Producto inflamable incompatible con vacunas refrigeradas"),
+            },
+        ],
     }
 
 
@@ -54,6 +66,16 @@ def get_compartments(
     return compartments
 
 
+def get_incompatible_pairs(
+    config: dict[str, object],
+) -> list[dict[str, object]]:
+    incompatible_pairs = config["incompatible_cargo_pairs"]
+
+    assert isinstance(incompatible_pairs, list)
+
+    return incompatible_pairs
+
+
 def test_validate_aircraft_config_accepts_valid_config() -> None:
     validate_aircraft_config(create_valid_config())
 
@@ -65,6 +87,17 @@ def test_validate_aircraft_config_rejects_missing_key() -> None:
     with pytest.raises(
         ValueError,
         match="Faltan parámetros obligatorios",
+    ):
+        validate_aircraft_config(config)
+
+
+def test_validate_aircraft_config_rejects_missing_incompatible_pairs() -> None:
+    config = create_valid_config()
+    del config["incompatible_cargo_pairs"]
+
+    with pytest.raises(
+        ValueError,
+        match="incompatible_cargo_pairs",
     ):
         validate_aircraft_config(config)
 
@@ -295,6 +328,138 @@ def test_validate_aircraft_config_rejects_volume_total_mismatch() -> None:
         validate_aircraft_config(config)
 
 
+def test_validate_aircraft_config_accepts_empty_incompatibility_list() -> None:
+    config = create_valid_config()
+    config["incompatible_cargo_pairs"] = []
+
+    validate_aircraft_config(config)
+
+
+def test_validate_aircraft_config_rejects_non_list_incompatibilities() -> None:
+    config = create_valid_config()
+    config["incompatible_cargo_pairs"] = {}
+
+    with pytest.raises(
+        TypeError,
+        match="incompatible_cargo_pairs",
+    ):
+        validate_aircraft_config(config)
+
+
+def test_validate_aircraft_config_rejects_non_object_incompatibility() -> None:
+    config = create_valid_config()
+    config["incompatible_cargo_pairs"] = ["C011-C004"]
+
+    with pytest.raises(
+        TypeError,
+        match="Cada incompatibilidad",
+    ):
+        validate_aircraft_config(config)
+
+
+def test_validate_aircraft_config_rejects_missing_incompatibility_key() -> None:
+    config = create_valid_config()
+    incompatible_pairs = get_incompatible_pairs(config)
+
+    del incompatible_pairs[0]["reason"]
+
+    with pytest.raises(
+        ValueError,
+        match="parámetros obligatorios",
+    ):
+        validate_aircraft_config(config)
+
+
+def test_validate_aircraft_config_rejects_empty_first_cargo_id() -> None:
+    config = create_valid_config()
+    incompatible_pairs = get_incompatible_pairs(config)
+
+    incompatible_pairs[0]["cargo_id_1"] = "   "
+
+    with pytest.raises(
+        ValueError,
+        match="cargo_id_1 válido",
+    ):
+        validate_aircraft_config(config)
+
+
+def test_validate_aircraft_config_rejects_empty_second_cargo_id() -> None:
+    config = create_valid_config()
+    incompatible_pairs = get_incompatible_pairs(config)
+
+    incompatible_pairs[0]["cargo_id_2"] = ""
+
+    with pytest.raises(
+        ValueError,
+        match="cargo_id_2 válido",
+    ):
+        validate_aircraft_config(config)
+
+
+def test_validate_aircraft_config_rejects_empty_incompatibility_reason() -> None:
+    config = create_valid_config()
+    incompatible_pairs = get_incompatible_pairs(config)
+
+    incompatible_pairs[0]["reason"] = "   "
+
+    with pytest.raises(
+        ValueError,
+        match="debe incluir una razón",
+    ):
+        validate_aircraft_config(config)
+
+
+def test_validate_aircraft_config_rejects_self_incompatibility() -> None:
+    config = create_valid_config()
+    incompatible_pairs = get_incompatible_pairs(config)
+
+    incompatible_pairs[0]["cargo_id_2"] = "C011"
+
+    with pytest.raises(
+        ValueError,
+        match="incompatible consigo misma",
+    ):
+        validate_aircraft_config(config)
+
+
+def test_validate_aircraft_config_rejects_duplicate_incompatibility() -> None:
+    config = create_valid_config()
+    incompatible_pairs = get_incompatible_pairs(config)
+
+    incompatible_pairs.append(
+        {
+            "cargo_id_1": "C011",
+            "cargo_id_2": "C004",
+            "reason": "Par repetido",
+        }
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="incompatibles duplicados",
+    ):
+        validate_aircraft_config(config)
+
+
+def test_validate_aircraft_config_rejects_reversed_duplicate_pair() -> None:
+    config = create_valid_config()
+    incompatible_pairs = get_incompatible_pairs(config)
+
+    incompatible_pairs.append(
+        {
+            "cargo_id_1": "C004",
+            "cargo_id_2": "C011",
+            "reason": "Par repetido en orden inverso",
+        }
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="incompatibles duplicados",
+    ):
+        validate_aircraft_config(config)
+
+
 def test_load_aircraft_config_reads_json(
     tmp_path: Path,
 ) -> None:
@@ -311,6 +476,7 @@ def test_load_aircraft_config_reads_json(
     assert config["max_weight_kg"] == 5000
     assert config["max_volume_m3"] == 24.0
     assert len(config["compartments"]) == 3
+    assert len(config["incompatible_cargo_pairs"]) == 2
 
     hazardous_compartments = [
         compartment["compartment_id"]

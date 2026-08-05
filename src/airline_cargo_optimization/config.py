@@ -9,6 +9,7 @@ REQUIRED_CONFIG_KEYS = {
     "max_volume_m3",
     "minimum_priority_3_items",
     "compartments",
+    "incompatible_cargo_pairs",
 }
 
 REQUIRED_COMPARTMENT_KEYS = {
@@ -18,6 +19,12 @@ REQUIRED_COMPARTMENT_KEYS = {
     "max_volume_m3",
     "allows_hazardous",
     "supports_cold_chain",
+}
+
+REQUIRED_INCOMPATIBILITY_KEYS = {
+    "cargo_id_1",
+    "cargo_id_2",
+    "reason",
 }
 
 
@@ -83,6 +90,8 @@ def validate_aircraft_config(
         max_weight_kg,
         max_volume_m3,
     )
+
+    validate_incompatible_cargo_pairs(config["incompatible_cargo_pairs"])
 
 
 def validate_compartments(
@@ -221,6 +230,80 @@ def validate_compartments(
             f"Compartimientos: {total_compartment_volume:.2f} m³. "
             f"Aeronave: {aircraft_max_volume_m3:.2f} m³."
         )
+
+
+def validate_incompatible_cargo_pairs(
+    incompatible_pairs: Any,
+) -> None:
+    if not isinstance(incompatible_pairs, list):
+        raise TypeError("El parámetro 'incompatible_cargo_pairs' debe ser una lista.")
+
+    normalized_pairs: set[tuple[str, str]] = set()
+
+    for position, pair in enumerate(
+        incompatible_pairs,
+        start=1,
+    ):
+        if not isinstance(pair, dict):
+            raise TypeError(
+                "Cada incompatibilidad debe estar representada "
+                "por un objeto de configuración."
+            )
+
+        missing_keys = REQUIRED_INCOMPATIBILITY_KEYS.difference(pair)
+
+        if missing_keys:
+            raise ValueError(
+                f"La incompatibilidad de la posición {position} "
+                "no contiene todos los parámetros obligatorios: "
+                f"{sorted(missing_keys)}"
+            )
+
+        cargo_id_1 = pair["cargo_id_1"]
+        cargo_id_2 = pair["cargo_id_2"]
+        reason = pair["reason"]
+
+        if not isinstance(cargo_id_1, str) or not cargo_id_1.strip():
+            raise ValueError(
+                f"La incompatibilidad de la posición {position} "
+                "debe incluir un cargo_id_1 válido."
+            )
+
+        if not isinstance(cargo_id_2, str) or not cargo_id_2.strip():
+            raise ValueError(
+                f"La incompatibilidad de la posición {position} "
+                "debe incluir un cargo_id_2 válido."
+            )
+
+        if not isinstance(reason, str) or not reason.strip():
+            raise ValueError(
+                f"La incompatibilidad de la posición {position} debe incluir una razón."
+            )
+
+        normalized_cargo_id_1 = cargo_id_1.strip().upper()
+        normalized_cargo_id_2 = cargo_id_2.strip().upper()
+
+        if normalized_cargo_id_1 == normalized_cargo_id_2:
+            raise ValueError(
+                "Una carga no puede ser incompatible consigo misma: "
+                f"{normalized_cargo_id_1}."
+            )
+
+        normalized_pair = tuple(
+            sorted(
+                (
+                    normalized_cargo_id_1,
+                    normalized_cargo_id_2,
+                )
+            )
+        )
+
+        if normalized_pair in normalized_pairs:
+            raise ValueError(
+                f"Existen pares de cargas incompatibles duplicados: {normalized_pair}."
+            )
+
+        normalized_pairs.add(normalized_pair)
 
 
 def validate_positive_number(

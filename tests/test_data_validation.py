@@ -100,6 +100,13 @@ def create_valid_aircraft_config() -> dict[str, object]:
                 "supports_cold_chain": False,
             },
         ],
+        "incompatible_cargo_pairs": [
+            {
+                "cargo_id_1": "C002",
+                "cargo_id_2": "C003",
+                "reason": ("Mercancía peligrosa incompatible con equipamiento médico"),
+            }
+        ],
     }
 
 
@@ -111,6 +118,16 @@ def get_compartments(
     assert isinstance(compartments, list)
 
     return compartments
+
+
+def get_incompatible_pairs(
+    config: dict[str, object],
+) -> list[dict[str, object]]:
+    incompatible_pairs = config["incompatible_cargo_pairs"]
+
+    assert isinstance(incompatible_pairs, list)
+
+    return incompatible_pairs
 
 
 def test_validate_cargo_data_accepts_valid_data() -> None:
@@ -465,3 +482,92 @@ def test_business_rules_rejects_cold_chain_by_volume_capacity() -> None:
             create_valid_cargo_data(),
             config,
         )
+
+
+def test_business_rules_accepts_valid_incompatible_references() -> None:
+    validate_business_rules(
+        create_valid_cargo_data(),
+        create_valid_aircraft_config(),
+    )
+
+
+def test_business_rules_accepts_empty_incompatible_pairs() -> None:
+    config = create_valid_aircraft_config()
+    config["incompatible_cargo_pairs"] = []
+
+    validate_business_rules(
+        create_valid_cargo_data(),
+        config,
+    )
+
+
+def test_business_rules_rejects_missing_first_incompatible_cargo() -> None:
+    config = create_valid_aircraft_config()
+    incompatible_pairs = get_incompatible_pairs(config)
+
+    incompatible_pairs[0]["cargo_id_1"] = "C999"
+
+    with pytest.raises(
+        ValueError,
+        match="C999",
+    ):
+        validate_business_rules(
+            create_valid_cargo_data(),
+            config,
+        )
+
+
+def test_business_rules_rejects_missing_second_incompatible_cargo() -> None:
+    config = create_valid_aircraft_config()
+    incompatible_pairs = get_incompatible_pairs(config)
+
+    incompatible_pairs[0]["cargo_id_2"] = "C888"
+
+    with pytest.raises(
+        ValueError,
+        match="C888",
+    ):
+        validate_business_rules(
+            create_valid_cargo_data(),
+            config,
+        )
+
+
+def test_business_rules_reports_all_missing_incompatible_cargo() -> None:
+    config = create_valid_aircraft_config()
+    incompatible_pairs = get_incompatible_pairs(config)
+
+    incompatible_pairs.append(
+        {
+            "cargo_id_1": "C999",
+            "cargo_id_2": "C888",
+            "reason": "Referencias inexistentes para prueba",
+        }
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="cargas no disponibles",
+    ) as error:
+        validate_business_rules(
+            create_valid_cargo_data(),
+            config,
+        )
+
+    error_message = str(error.value)
+
+    assert "C888" in error_message
+    assert "C999" in error_message
+
+
+def test_business_rules_normalizes_incompatible_cargo_ids() -> None:
+    config = create_valid_aircraft_config()
+    incompatible_pairs = get_incompatible_pairs(config)
+
+    incompatible_pairs[0]["cargo_id_1"] = " c002 "
+    incompatible_pairs[0]["cargo_id_2"] = " c003 "
+
+    validate_business_rules(
+        create_valid_cargo_data(),
+        config,
+    )
