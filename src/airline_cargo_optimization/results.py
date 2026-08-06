@@ -38,4 +38,5 @@ def build_solution_summary(
         total_volume_m3=result.total_volume_m3,
         weight_utilization_pct=(result.total_weight_kg / max_weight) * 100,
         volume_utilization_pct=(result.total_volume_m3 / max_volume) * 100,
+        
     )

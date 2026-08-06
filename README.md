@@ -281,7 +281,7 @@ GitHub:
 https://github.com/D1nilo
 
 LinkedIn:
-*(Agregar enlace cuando publiques el proyecto)*
+www.linkedin.com/in/daniel-nilo-palacios-31911a167
 
 ---
 
