@@ -9,11 +9,11 @@
   "volume_utilization_pct": 83.75,
   "solver_metrics": {
     "objective_value": 48300.0,
-    "wall_time_ms": 38,
+    "wall_time_ms": 110,
     "iterations": 56,
     "nodes": 1,
-    "variable_count": 52,
-    "constraint_count": 40
+    "variable_count": 56,
+    "constraint_count": 42
   },
   "cargo_assignments": [
     {

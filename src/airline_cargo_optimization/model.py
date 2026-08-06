@@ -22,12 +22,16 @@ def build_cargo_model(
     solver = pywraplp.Solver.CreateSolver("SCIP")
 
     if solver is None:
-        raise RuntimeError("No fue posible inicializar el solver SCIP.")
+        raise RuntimeError(
+            "No fue posible inicializar el solver SCIP."
+        )
 
     compartments = aircraft_config["compartments"]
 
     selection_variables = {
-        row.cargo_id: solver.BoolVar(f"select_{row.cargo_id}")
+        row.cargo_id: solver.BoolVar(
+            f"select_{row.cargo_id}"
+        )
         for row in cargo_data.itertuples(index=False)
     }
 
@@ -35,11 +39,100 @@ def build_cargo_model(
         (
             row.cargo_id,
             compartment["compartment_id"],
-        ): solver.BoolVar(f"assign_{row.cargo_id}_{compartment['compartment_id']}")
+        ): solver.BoolVar(
+            "assign_"
+            f"{row.cargo_id}_"
+            f"{compartment['compartment_id']}"
+        )
         for row in cargo_data.itertuples(index=False)
         for compartment in compartments
     }
 
+    add_assignment_link_constraints(
+        solver,
+        cargo_data,
+        compartments,
+        selection_variables,
+        assignment_variables,
+    )
+
+    add_aircraft_capacity_constraints(
+        solver,
+        cargo_data,
+        aircraft_config,
+        selection_variables,
+    )
+
+    add_compartment_capacity_constraints(
+        solver,
+        cargo_data,
+        compartments,
+        assignment_variables,
+    )
+
+    add_hazardous_cargo_constraints(
+        solver,
+        cargo_data,
+        compartments,
+        assignment_variables,
+    )
+
+    add_cold_chain_constraints(
+        solver,
+        cargo_data,
+        compartments,
+        assignment_variables,
+    )
+
+    add_incompatibility_constraints(
+        solver,
+        aircraft_config,
+        compartments,
+        assignment_variables,
+    )
+
+    add_route_compatibility_constraints(
+        solver,
+        cargo_data,
+        aircraft_config,
+        selection_variables,
+    )
+
+    add_priority_constraint(
+        solver,
+        cargo_data,
+        aircraft_config,
+        selection_variables,
+    )
+
+    solver.Maximize(
+        sum(
+            row.revenue_usd
+            * selection_variables[row.cargo_id]
+            for row in cargo_data.itertuples(index=False)
+        )
+    )
+
+    return CargoOptimizationModel(
+        solver=solver,
+        selection_variables=selection_variables,
+        assignment_variables=assignment_variables,
+    )
+
+
+def add_assignment_link_constraints(
+    solver: pywraplp.Solver,
+    cargo_data: pd.DataFrame,
+    compartments: list[dict[str, Any]],
+    selection_variables: dict[
+        str,
+        pywraplp.Variable,
+    ],
+    assignment_variables: dict[
+        tuple[str, str],
+        pywraplp.Variable,
+    ],
+) -> None:
     for row in cargo_data.itertuples(index=False):
         solver.Add(
             sum(
@@ -55,9 +148,20 @@ def build_cargo_model(
             f"assignment_link_{row.cargo_id}",
         )
 
+
+def add_aircraft_capacity_constraints(
+    solver: pywraplp.Solver,
+    cargo_data: pd.DataFrame,
+    aircraft_config: dict[str, Any],
+    selection_variables: dict[
+        str,
+        pywraplp.Variable,
+    ],
+) -> None:
     solver.Add(
         sum(
-            row.weight_kg * selection_variables[row.cargo_id]
+            row.weight_kg
+            * selection_variables[row.cargo_id]
             for row in cargo_data.itertuples(index=False)
         )
         <= aircraft_config["max_weight_kg"],
@@ -66,13 +170,24 @@ def build_cargo_model(
 
     solver.Add(
         sum(
-            row.volume_m3 * selection_variables[row.cargo_id]
+            row.volume_m3
+            * selection_variables[row.cargo_id]
             for row in cargo_data.itertuples(index=False)
         )
         <= aircraft_config["max_volume_m3"],
         "max_aircraft_volume_constraint",
     )
 
+
+def add_compartment_capacity_constraints(
+    solver: pywraplp.Solver,
+    cargo_data: pd.DataFrame,
+    compartments: list[dict[str, Any]],
+    assignment_variables: dict[
+        tuple[str, str],
+        pywraplp.Variable,
+    ],
+) -> None:
     for compartment in compartments:
         compartment_id = compartment["compartment_id"]
 
@@ -106,16 +221,28 @@ def build_cargo_model(
             f"max_volume_{compartment_id}",
         )
 
-    hazardous_cargo = cargo_data[cargo_data["is_hazardous"]]
 
-    unauthorized_hazardous_compartments = [
+def add_hazardous_cargo_constraints(
+    solver: pywraplp.Solver,
+    cargo_data: pd.DataFrame,
+    compartments: list[dict[str, Any]],
+    assignment_variables: dict[
+        tuple[str, str],
+        pywraplp.Variable,
+    ],
+) -> None:
+    hazardous_cargo = cargo_data[
+        cargo_data["is_hazardous"]
+    ]
+
+    unauthorized_compartments = [
         compartment
         for compartment in compartments
         if not compartment["allows_hazardous"]
     ]
 
     for row in hazardous_cargo.itertuples(index=False):
-        for compartment in unauthorized_hazardous_compartments:
+        for compartment in unauthorized_compartments:
             compartment_id = compartment["compartment_id"]
 
             solver.Add(
@@ -126,19 +253,33 @@ def build_cargo_model(
                     )
                 ]
                 == 0,
-                f"hazardous_restriction_{row.cargo_id}_{compartment_id}",
+                "hazardous_restriction_"
+                f"{row.cargo_id}_"
+                f"{compartment_id}",
             )
 
-    cold_chain_cargo = cargo_data[cargo_data["requires_cold_chain"]]
 
-    unsupported_cold_chain_compartments = [
+def add_cold_chain_constraints(
+    solver: pywraplp.Solver,
+    cargo_data: pd.DataFrame,
+    compartments: list[dict[str, Any]],
+    assignment_variables: dict[
+        tuple[str, str],
+        pywraplp.Variable,
+    ],
+) -> None:
+    cold_chain_cargo = cargo_data[
+        cargo_data["requires_cold_chain"]
+    ]
+
+    unsupported_compartments = [
         compartment
         for compartment in compartments
         if not compartment["supports_cold_chain"]
     ]
 
     for row in cold_chain_cargo.itertuples(index=False):
-        for compartment in unsupported_cold_chain_compartments:
+        for compartment in unsupported_compartments:
             compartment_id = compartment["compartment_id"]
 
             solver.Add(
@@ -149,14 +290,33 @@ def build_cargo_model(
                     )
                 ]
                 == 0,
-                f"cold_chain_restriction_{row.cargo_id}_{compartment_id}",
+                "cold_chain_restriction_"
+                f"{row.cargo_id}_"
+                f"{compartment_id}",
             )
 
-    incompatible_pairs = aircraft_config["incompatible_cargo_pairs"]
+
+def add_incompatibility_constraints(
+    solver: pywraplp.Solver,
+    aircraft_config: dict[str, Any],
+    compartments: list[dict[str, Any]],
+    assignment_variables: dict[
+        tuple[str, str],
+        pywraplp.Variable,
+    ],
+) -> None:
+    incompatible_pairs = aircraft_config[
+        "incompatible_cargo_pairs"
+    ]
 
     for pair in incompatible_pairs:
-        cargo_id_1 = pair["cargo_id_1"]
-        cargo_id_2 = pair["cargo_id_2"]
+        cargo_id_1 = str(
+            pair["cargo_id_1"]
+        ).strip().upper()
+
+        cargo_id_2 = str(
+            pair["cargo_id_2"]
+        ).strip().upper()
 
         for compartment in compartments:
             compartment_id = compartment["compartment_id"]
@@ -175,29 +335,63 @@ def build_cargo_model(
                     )
                 ]
                 <= 1,
-                f"incompatibility_{cargo_id_1}_{cargo_id_2}_{compartment_id}",
+                "incompatibility_"
+                f"{cargo_id_1}_"
+                f"{cargo_id_2}_"
+                f"{compartment_id}",
             )
 
-    high_priority_cargo = cargo_data[cargo_data["priority"] == 3]
+
+def add_route_compatibility_constraints(
+    solver: pywraplp.Solver,
+    cargo_data: pd.DataFrame,
+    aircraft_config: dict[str, Any],
+    selection_variables: dict[
+        str,
+        pywraplp.Variable,
+    ],
+) -> None:
+    route_airports = {
+        str(stop["airport_code"])
+        .strip()
+        .upper()
+        for stop in aircraft_config["route"]
+    }
+
+    for row in cargo_data.itertuples(index=False):
+        destination = str(
+            row.destination
+        ).strip().upper()
+
+        if destination not in route_airports:
+            solver.Add(
+                selection_variables[row.cargo_id] == 0,
+                f"out_of_route_{row.cargo_id}_{destination}",
+            )
+
+
+def add_priority_constraint(
+    solver: pywraplp.Solver,
+    cargo_data: pd.DataFrame,
+    aircraft_config: dict[str, Any],
+    selection_variables: dict[
+        str,
+        pywraplp.Variable,
+    ],
+) -> None:
+    high_priority_cargo = cargo_data[
+        cargo_data["priority"] == 3
+    ]
 
     solver.Add(
         sum(
             selection_variables[row.cargo_id]
-            for row in high_priority_cargo.itertuples(index=False)
+            for row in high_priority_cargo.itertuples(
+                index=False
+            )
         )
-        >= aircraft_config["minimum_priority_3_items"],
+        >= aircraft_config[
+            "minimum_priority_3_items"
+        ],
         "minimum_high_priority_constraint",
-    )
-
-    solver.Maximize(
-        sum(
-            row.revenue_usd * selection_variables[row.cargo_id]
-            for row in cargo_data.itertuples(index=False)
-        )
-    )
-
-    return CargoOptimizationModel(
-        solver=solver,
-        selection_variables=selection_variables,
-        assignment_variables=assignment_variables,
     )

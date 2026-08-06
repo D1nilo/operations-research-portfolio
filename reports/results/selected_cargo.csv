@@ -1,9 +1,9 @@
-cargo_id,description,weight_kg,volume_m3,revenue_usd,priority,is_hazardous,hazard_class,requires_cold_chain,compartment_id
-C006,Documentos urgentes,100,0.5,1800,3,False,,False,AFT
-C009,Equipamiento medico,1100,5.0,8800,3,False,,False,AFT
-C001,Medicamentos,450,2.5,5200,3,False,,True,FORWARD
-C008,Productos farmaceuticos,500,2.8,5900,3,False,,True,FORWARD
-C013,Vacunas refrigeradas,300,1.5,7200,3,False,,True,FORWARD
-C002,Electronica,800,4.0,6800,2,False,,False,MAIN
-C011,Baterias de litio,350,1.8,6500,3,True,CLASS_9,False,MAIN
-C012,Productos inflamables,400,2.0,6100,2,True,CLASS_3,False,MAIN
+cargo_id,description,weight_kg,volume_m3,revenue_usd,priority,is_hazardous,hazard_class,requires_cold_chain,destination,compartment_id
+C006,Documentos urgentes,100,0.5,1800,3,False,,False,LIM,AFT
+C009,Equipamiento medico,1100,5.0,8800,3,False,,False,MIA,AFT
+C001,Medicamentos,450,2.5,5200,3,False,,True,LIM,FORWARD
+C008,Productos farmaceuticos,500,2.8,5900,3,False,,True,LIM,FORWARD
+C013,Vacunas refrigeradas,300,1.5,7200,3,False,,True,LIM,FORWARD
+C002,Electronica,800,4.0,6800,2,False,,False,MIA,MAIN
+C011,Baterias de litio,350,1.8,6500,3,True,CLASS_9,False,MIA,MAIN
+C012,Productos inflamables,400,2.0,6100,2,True,CLASS_3,False,MIA,MAIN

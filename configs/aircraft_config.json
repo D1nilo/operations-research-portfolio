@@ -1,5 +1,16 @@
 {
   "aircraft_id": "B767F-001",
+  "origin": "SCL",
+  "route": [
+    {
+      "sequence": 1,
+      "airport_code": "LIM"
+    },
+    {
+      "sequence": 2,
+      "airport_code": "MIA"
+    }
+  ],
   "max_weight_kg": 5000,
   "max_volume_m3": 24.0,
   "minimum_priority_3_items": 2,
@@ -7,6 +18,7 @@
     {
       "compartment_id": "FORWARD",
       "description": "Compartimiento delantero",
+      "unloading_order": 2,
       "max_weight_kg": 1600,
       "max_volume_m3": 8.0,
       "allows_hazardous": false,
@@ -15,6 +27,7 @@
     {
       "compartment_id": "MAIN",
       "description": "Compartimiento principal",
+      "unloading_order": 3,
       "max_weight_kg": 2200,
       "max_volume_m3": 10.0,
       "allows_hazardous": true,
@@ -23,6 +36,7 @@
     {
       "compartment_id": "AFT",
       "description": "Compartimiento trasero",
+      "unloading_order": 1,
       "max_weight_kg": 1200,
       "max_volume_m3": 6.0,
       "allows_hazardous": false,
